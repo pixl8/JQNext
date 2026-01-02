@@ -94,8 +94,8 @@ export function css(collection, name, value) {
     const prop = vendorPropName(name);
     const computed = getStyles(elem);
     
-    // Try inline style first, then computed
-    return elem.style[prop] || computed.getPropertyValue(name) || computed[prop];
+    // Return computed style (jQuery behavior - always returns computed values)
+    return computed.getPropertyValue(name) || computed[prop] || '';
   }
   
   // Set styles

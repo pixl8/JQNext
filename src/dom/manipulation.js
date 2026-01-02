@@ -5,8 +5,9 @@
 
 import { isString, isFunction, isElement } from '../utilities/type.js';
 import { parseHTML } from '../utilities/strings.js';
-import { cleanData } from '../core/data.js';
+import { cleanData, getDataValue, setData } from '../core/data.js';
 import { matchesWithPseudo } from '../selectors/pseudo.js';
+import { cloneHandlers } from '../events/core.js';
 
 /**
  * Get the document for an element
@@ -525,8 +526,41 @@ export function clone(collection, withDataAndEvents = false, deepWithDataAndEven
     const elem = collection[i];
     const cloned = elem.cloneNode(true);
     
-    // TODO: Copy data and events if requested
-    // This requires access to the event system
+    // Copy data and events if requested
+    if (withDataAndEvents) {
+      // Copy data from source element
+      const sourceData = getDataValue(elem);
+      if (sourceData && Object.keys(sourceData).length > 0) {
+        for (const key in sourceData) {
+          setData(cloned, key, sourceData[key]);
+        }
+      }
+      
+      // Copy event handlers from source element
+      cloneHandlers(elem, cloned);
+      
+      // Handle deep cloning for descendants
+      if (deepWithDataAndEvents) {
+        const sourceDescendants = elem.querySelectorAll('*');
+        const clonedDescendants = cloned.querySelectorAll('*');
+        
+        for (let j = 0; j < sourceDescendants.length; j++) {
+          const srcDesc = sourceDescendants[j];
+          const clonedDesc = clonedDescendants[j];
+          
+          // Copy data
+          const descData = getDataValue(srcDesc);
+          if (descData && Object.keys(descData).length > 0) {
+            for (const key in descData) {
+              setData(clonedDesc, key, descData[key]);
+            }
+          }
+          
+          // Copy event handlers
+          cloneHandlers(srcDesc, clonedDesc);
+        }
+      }
+    }
     
     result.push(cloned);
   }

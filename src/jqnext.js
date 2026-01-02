@@ -317,7 +317,21 @@ jQNext.expr = {
       return !jQNext.expr.filters.visible(elem);
     }
   },
-  createPseudo: function(fn) { return fn; }
+  // createPseudo wraps a factory function to be compatible with our pseudo-selector system
+  // The factory takes the argument (e.g., "foo" from :hasData(foo)) and returns a filter function
+  createPseudo: function(fn) {
+    // Return a function that matches our pseudo signature (elem, index, collection, param)
+    // but calls the factory pattern correctly
+    var wrapped = function(elem, index, collection, param) {
+      // Call the factory with the param to get the actual filter
+      var filter = fn(param);
+      // Call the filter with just the element (Sizzle/jQuery style)
+      return filter(elem);
+    };
+    // Mark it as created via createPseudo so we know the signature
+    wrapped._isCreatePseudo = true;
+    return wrapped;
+  }
 };
 jQNext.find = function(selector, context, results) {
   results = results || [];

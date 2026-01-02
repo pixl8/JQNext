@@ -160,10 +160,11 @@ function createHandler(elem) {
       }
       
       // Check selector (delegation)
-      let target = event.target;
+      let target;
       
       if (handleObj.selector) {
         // Find matching delegated target (use pseudo-aware matching)
+        target = event.target;
         while (target && target !== elem) {
           if (target.nodeType === 1 && matchesWithPseudo(target, handleObj.selector)) {
             break;
@@ -177,6 +178,8 @@ function createHandler(elem) {
         
         event.currentTarget = target;
       } else {
+        // For non-delegated events, this should be the element the handler is bound to
+        target = elem;
         event.currentTarget = elem;
       }
       
@@ -678,6 +681,47 @@ function returnTrue() {
   return true;
 }
 
+/**
+ * Clone event handlers from one element to another
+ * @param {Element} source - Source element
+ * @param {Element} dest - Destination element
+ */
+export function cloneHandlers(source, dest) {
+  const sourceHandlers = handlersStorage.get(source);
+  if (!sourceHandlers || !sourceHandlers.events) return;
+  
+  // Get or create handlers for dest
+  const destHandlers = getHandlers(dest);
+  const destHandle = createHandler(dest);
+  
+  // Clone each event type
+  for (const type in sourceHandlers.events) {
+    const typeHandlers = sourceHandlers.events[type];
+    
+    if (!destHandlers.events[type]) {
+      destHandlers.events[type] = [];
+      // Add event listener on dest
+      dest.addEventListener(type, destHandle, false);
+    }
+    
+    // Clone each handler object
+    typeHandlers.forEach(handleObj => {
+      const clonedHandleObj = {
+        type: handleObj.type,
+        origType: handleObj.origType,
+        handler: handleObj.handler,
+        data: handleObj.data,
+        selector: handleObj.selector,
+        namespace: handleObj.namespace,
+        namespaces: handleObj.namespaces ? handleObj.namespaces.slice() : [],
+        guid: handleObj.guid
+      };
+      
+      destHandlers.events[type].push(clonedHandleObj);
+    });
+  }
+}
+
 export default {
   on,
   off,
@@ -685,5 +729,6 @@ export default {
   trigger,
   triggerHandler,
   special,
-  parseEventTypes
+  parseEventTypes,
+  cloneHandlers
 };

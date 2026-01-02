@@ -38,6 +38,11 @@ const booleanAttrs = new Set([
  * @returns {*|jQCollection}
  */
 export function attr(collection, name, value) {
+  // Handle attr() with no arguments - returns undefined (jQuery compatibility)
+  if (name === undefined) {
+    return undefined;
+  }
+  
   // Get attribute value
   if (isString(name) && value === undefined) {
     const elem = collection[0];
