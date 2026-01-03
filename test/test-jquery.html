@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>jQNext Plugin Compatibility Tests - jQuery 2.2.5</title>
+    <link rel="stylesheet" href="./lib/qunit/qunit.css">
+    <style>
+        #dimension-test {
+            width: 100px;
+            height: 100px;
+            padding: 10px;
+            border: 5px solid black;
+            margin: 20px;
+            box-sizing: content-box; /* Standard box model for easier calc */
+        }
+        #visible-test {
+            display: block;
+        }
+        #hidden-test {
+            display: none;
+        }
+        .relative-container {
+            position: relative;
+            top: 10px;
+            left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="qunit"></div>
+    <div id="qunit-fixture">
+        <!-- Dimension Tests -->
+        <div id="dimension-test"></div>
+
+        <!-- Visibility Tests -->
+        <div id="visible-test">Visible</div>
+        <div id="hidden-test">Hidden</div>
+        <div id="visibility-parent" style="display: none;">
+            <div id="nested-hidden">Nested Hidden</div>
+        </div>
+
+        <!-- Event Namespace Tests -->
+        <div id="event-ns-test"></div>
+
+        <!-- Data Attribute Tests -->
+        <div id="data-test" data-my-val="123" data-multi-word-attr="test"></div>
+
+        <!-- Traversal Tests -->
+        <div id="traversal-root">
+            <div class="level-1">
+                <div class="level-2">
+                    <span class="target">Target</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./lib/qunit/qunit.js"></script>
+    <script src="./lib/jquery-2.2.5-sec.js"></script>
+    <script src="./tests.js"></script>
+</body>
+</html>
