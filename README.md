@@ -346,4 +346,3 @@ MIT
 
 - Inspired by jQuery by The jQuery Foundation
 - Modern implementation for Preside CMS
-- Part of the Ready Intelligence toolkit alongside SandalJS
