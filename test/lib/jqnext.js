@@ -4523,12 +4523,12 @@
   /**
    * Core dimension function
    * @param {jQCollection} collection
-   * @param {string} dimension - 'width' or 'height'
+   * @param {string} dim - 'width' or 'height'
    * @param {*} [value]
    * @param {string} [extra] - 'inner', 'outer', 'outerMargin'
    * @returns {number|jQCollection}
    */
-  function dimension(collection, dimension, value, extra) {
+  function dimension(collection, dim, value, extra) {
     const elem = collection[0];
     
     // Getter
@@ -4537,8 +4537,8 @@
       
       // Window
       if (isWindow(elem)) {
-        return dimension === 'width' 
-          ? elem.innerWidth 
+        return dim === 'width'
+          ? elem.innerWidth
           : elem.innerHeight;
       }
       
@@ -4546,22 +4546,22 @@
       if (elem.nodeType === 9) {
         const doc = elem.documentElement;
         return Math.max(
-          elem.body[`scroll${dimension === 'width' ? 'Width' : 'Height'}`],
-          doc[`scroll${dimension === 'width' ? 'Width' : 'Height'}`],
-          elem.body[`offset${dimension === 'width' ? 'Width' : 'Height'}`],
-          doc[`offset${dimension === 'width' ? 'Width' : 'Height'}`],
-          doc[`client${dimension === 'width' ? 'Width' : 'Height'}`]
+          elem.body[`scroll${dim === 'width' ? 'Width' : 'Height'}`],
+          doc[`scroll${dim === 'width' ? 'Width' : 'Height'}`],
+          elem.body[`offset${dim === 'width' ? 'Width' : 'Height'}`],
+          doc[`offset${dim === 'width' ? 'Width' : 'Height'}`],
+          doc[`client${dim === 'width' ? 'Width' : 'Height'}`]
         );
       }
       
       // Element
       const rect = elem.getBoundingClientRect();
       const computed = getStyles(elem);
-      let result = rect[dimension];
+      let result = rect[dim];
       
       if (!extra) {
         // Content only (subtract padding and border)
-        if (dimension === 'width') {
+        if (dim === 'width') {
           result -= parseFloat(computed.paddingLeft) || 0;
           result -= parseFloat(computed.paddingRight) || 0;
           result -= parseFloat(computed.borderLeftWidth) || 0;
@@ -4574,7 +4574,7 @@
         }
       } else if (extra === 'inner') {
         // Content + padding (subtract border)
-        if (dimension === 'width') {
+        if (dim === 'width') {
           result -= parseFloat(computed.borderLeftWidth) || 0;
           result -= parseFloat(computed.borderRightWidth) || 0;
         } else {
@@ -4583,7 +4583,7 @@
         }
       } else if (extra === 'outerMargin') {
         // Content + padding + border + margin
-        if (dimension === 'width') {
+        if (dim === 'width') {
           result += parseFloat(computed.marginLeft) || 0;
           result += parseFloat(computed.marginRight) || 0;
         } else {
@@ -4601,7 +4601,7 @@
       if (this.nodeType !== 1) return;
       
       let val = isFunction(value)
-        ? value.call(this, i, dimension(collection, dimension))
+        ? value.call(this, i, dimension(collection, dim))
         : value;
       
       if (val === null || val === undefined) {
@@ -4615,7 +4615,7 @@
         if (computed.boxSizing === 'border-box') {
           if (extra === 'inner' || !extra) {
             // Add padding and border
-            if (dimension === 'width') {
+            if (dim === 'width') {
               val += parseFloat(computed.paddingLeft) || 0;
               val += parseFloat(computed.paddingRight) || 0;
               val += parseFloat(computed.borderLeftWidth) || 0;
@@ -4632,7 +4632,7 @@
         val = val + 'px';
       }
       
-      this.style[dimension] = val;
+      this.style[dim] = val;
     });
   }
 
