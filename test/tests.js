@@ -1080,6 +1080,64 @@ QUnit.module('Plugin Compatibility - Dimensions');
             $th.remove();
         });
 
+        QUnit.test('$(selector, arrayContext) - DataTables filterContainer pattern', function(assert) {
+            // DataTables passes an array as context: $('input', settings.aanFeatures.f)
+            // where aanFeatures.f is an array of DOM elements like [div]
+            var $container = $('<div id="filter-container">' +
+                '<input type="hidden" name="hidden1" value="obj_id">' +
+                '<input type="hidden" name="hidden2" value="filter_expr">' +
+                '<input type="text" class="data-table-search" value="search_text">' +
+                '</div>').appendTo('#qunit-fixture');
+
+            // Simulate DataTables aanFeatures.f which is a plain array of DOM elements
+            var filterContainer = [$container[0]];
+
+            // This is the pattern DataTables uses
+            var $searchBox = $('input', filterContainer);
+
+            // Should find only inputs WITHIN the container, not all inputs in document
+            assert.equal($searchBox.length, 3, 'Finds inputs within array context');
+
+            // val() should return first element's value (hidden input in this case)
+            // This tests that we're searching within context, not entire document
+            assert.equal($searchBox.first().val(), 'obj_id', 'First input has correct value');
+
+            // More specific selector within array context
+            var $textInputs = $('input[type="text"]', filterContainer);
+            assert.equal($textInputs.length, 1, 'Specific selector works with array context');
+            assert.equal($textInputs.val(), 'search_text', 'Text input has correct value');
+
+            $container.remove();
+        });
+
+        QUnit.test('$(selector, arrayContext) does not search entire document', function(assert) {
+            // Create elements both inside and outside a container
+            var $outsideInput = $('<input type="text" class="outside-input" value="outside">').appendTo('#qunit-fixture');
+            var $container = $('<div id="test-container">' +
+                '<input type="text" class="inside-input" value="inside">' +
+                '</div>').appendTo('#qunit-fixture');
+
+            // Plain array context (like DataTables uses)
+            var arrayContext = [$container[0]];
+
+            // Should only find the input inside the container
+            var $found = $('input', arrayContext);
+            assert.equal($found.length, 1, 'Only finds inputs within array context');
+            assert.equal($found.val(), 'inside', 'Found correct input (inside container)');
+
+            // Verify it didn't find the outside input
+            var foundOutside = false;
+            $found.each(function() {
+                if ($(this).hasClass('outside-input')) {
+                    foundOutside = true;
+                }
+            });
+            assert.ok(!foundOutside, 'Did not find inputs outside the container');
+
+            $outsideInput.remove();
+            $container.remove();
+        });
+
         QUnit.module('Plugin Compatibility - jQuery.hotkeys.js Patterns');
 
         QUnit.test('$.event.special with handler wrapping', function(assert) {

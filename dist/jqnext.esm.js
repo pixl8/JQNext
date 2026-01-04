@@ -1448,8 +1448,17 @@ class jQCollection {
    * @param {Element|Document|jQCollection} context
    */
   init(selector, context = document) {
-    // Normalize context to DOM element (extract from jQCollection if needed)
-    const contextElem = context instanceof jQCollection ? context[0] : context;
+    // Normalize context to DOM element(s)
+    // Handle: jQCollection, array of elements, single element
+    let contextElem;
+    if (context instanceof jQCollection) {
+      contextElem = context[0];
+    } else if (Array.isArray(context) || (context && typeof context.length === 'number' && context !== window && !context.nodeType && !isString(context))) {
+      // It's an array or array-like (but not window or string) - extract first element
+      contextElem = context[0];
+    } else {
+      contextElem = context;
+    }
     
     // Store context as DOM element (jQuery compatibility)
     this.context = contextElem || document;
