@@ -2768,6 +2768,18 @@
         return event.target.nodeName.toLowerCase() === 'a';
       }
     },
+    // Submit needs special handling to trigger native form submission
+    submit: {
+      trigger: function() {
+        if (this.nodeName && this.nodeName.toLowerCase() === 'form' && typeof this.submit === 'function') {
+          this.submit();
+          return false;
+        }
+      },
+      _default: function(event) {
+        return event.target.nodeName && event.target.nodeName.toLowerCase() === 'form';
+      }
+    },
     // Mouseenter/leave don't bubble, simulate with mouseover/out
     mouseenter: {
       delegateType: 'mouseover',
