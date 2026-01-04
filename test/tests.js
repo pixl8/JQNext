@@ -1322,3 +1322,203 @@ QUnit.module('Plugin Compatibility - Dimensions');
                 done();
             }, 50);
         });
+
+        QUnit.module('Plugin Compatibility - Delegated Event Depth Ordering');
+
+        QUnit.test('Delegated handlers fire in DOM depth order (closest to target first)', function(assert) {
+            // This test verifies behavior needed for rulesEngineConditionBuilder
+            // When clicking a delete button inside an expression, the delete handler
+            // should fire before the expression click handler
+            var $container = $('<div id="delegation-test">' +
+                '<div class="outer">' +
+                    '<span class="inner">' +
+                        '<a class="deepest">Click me</a>' +
+                    '</span>' +
+                '</div>' +
+            '</div>').appendTo('#qunit-fixture');
+
+            var callOrder = [];
+
+            // Bind handlers in REVERSE depth order (outer first, like real code might)
+            $container.on('click', '.outer', function(e) {
+                callOrder.push('outer');
+            });
+
+            $container.on('click', '.inner', function(e) {
+                callOrder.push('inner');
+            });
+
+            $container.on('click', '.deepest', function(e) {
+                callOrder.push('deepest');
+            });
+
+            // Click the deepest element
+            $container.find('.deepest').trigger('click');
+
+            // jQuery fires handlers in DOM depth order: closest to target first
+            // So: deepest -> inner -> outer
+            assert.equal(callOrder.length, 3, 'All three handlers fired');
+            assert.equal(callOrder[0], 'deepest', 'Deepest handler fires first');
+            assert.equal(callOrder[1], 'inner', 'Inner handler fires second');
+            assert.equal(callOrder[2], 'outer', 'Outer handler fires last');
+
+            $container.remove();
+        });
+
+        QUnit.test('stopImmediatePropagation prevents later delegated handlers', function(assert) {
+            // Test that stopImmediatePropagation() stops other delegated handlers
+            var $container = $('<div id="stop-prop-test">' +
+                '<div class="parent">' +
+                    '<a class="child">Click me</a>' +
+                '</div>' +
+            '</div>').appendTo('#qunit-fixture');
+
+            var callOrder = [];
+
+            // Bind parent handler first
+            $container.on('click', '.parent', function(e) {
+                callOrder.push('parent');
+            });
+
+            // Bind child handler second - but it should fire first due to depth ordering
+            $container.on('click', '.child', function(e) {
+                callOrder.push('child');
+                e.stopImmediatePropagation();
+            });
+
+            // Click the child
+            $container.find('.child').trigger('click');
+
+            // Child handler should fire first and stop parent from firing
+            assert.equal(callOrder.length, 1, 'Only one handler fired');
+            assert.equal(callOrder[0], 'child', 'Child handler fired');
+
+            $container.remove();
+        });
+
+        QUnit.test('$.fn.html() with jQuery collection moves elements (not clones)', function(assert) {
+            // This test verifies behavior needed for rulesEngineConditionBuilder
+            // When $li.html($expression), the original $expression elements should
+            // be MOVED into $li, not cloned. This ensures AJAX callbacks referencing
+            // those elements can still update them.
+            var $field = $('<span class="field">Original</span>');
+            var $expression = $('<div class="expression"></div>').append($field);
+            var $li = $('<li></li>');
+
+            // Simulate what rulesEngineConditionBuilder does:
+            // $li.html( rulesEngineCondition.renderExpression( expression, depth ) )
+            $li.html($expression);
+
+            // The original $field should still be in the DOM (moved, not cloned)
+            assert.ok($field.closest('li').length > 0, '$field is inside $li');
+            assert.equal($field.closest('li')[0], $li[0], '$field is inside the same $li');
+
+            // Modifying $field should affect the element in $li
+            $field.text('Modified');
+            assert.equal($li.find('.field').text(), 'Modified', 'Original reference still works');
+        });
+
+        QUnit.test('Rules engine condition builder scenario - delete vs expression click', function(assert) {
+            // Simulate the exact structure from rulesEngineConditionBuilder
+            var $ruleList = $('<ul class="rules-engine-condition-builder-rule-list">' +
+                '<li class="rules-engine-condition-builder-expression">' +
+                    '<span class="rules-engine-condition-builder-expression-text">ID is equal to</span>' +
+                    '<span class="rules-engine-condition-builder-expression-actions">' +
+                        '<a class="fa fa-trash rules-engine-condition-builder-expression-delete">Delete</a>' +
+                    '</span>' +
+                '</li>' +
+            '</ul>').appendTo('#qunit-fixture');
+
+            var expressionClicked = false;
+            var deleteClicked = false;
+
+            // Bind expression click handler (from conditionBuilder line 401)
+            $ruleList.on('click', '.rules-engine-condition-builder-expression:not(.rules-engine-condition-builder-expression-join)', function(e) {
+                // The original code checks: if ( !$( e.target ).is( "a" ) )
+                // But handler should still fire to allow this check
+                expressionClicked = true;
+            });
+
+            // Bind delete handler (from conditionBuilder line 417)
+            $ruleList.on('click', '.rules-engine-condition-builder-expression-delete', function(e) {
+                deleteClicked = true;
+                e.stopImmediatePropagation(); // This should prevent expression click
+            });
+
+            // Click the delete button
+            $ruleList.find('.rules-engine-condition-builder-expression-delete').trigger('click');
+
+            // Delete handler should fire first (it's closer to target)
+            // and stopImmediatePropagation should prevent expression handler
+            assert.ok(deleteClicked, 'Delete handler fired');
+            assert.ok(!expressionClicked, 'Expression handler did NOT fire (stopImmediatePropagation worked)');
+
+            $ruleList.remove();
+        });
+
+        QUnit.test('Delegated handlers only match Element nodes (nodeType === 1)', function(assert) {
+            // This test verifies that delegated event handling only tries to match
+            // Element nodes (nodeType 1), not text nodes (nodeType 3) or other node types.
+            // This was a bug where walking up the DOM could encounter non-element nodes
+            // and fail when calling matches() on them.
+            var $container = $('<div class="container">' +
+                '<span class="target">Some text content</span>' +
+            '</div>').appendTo('#qunit-fixture');
+
+            var handlerCalled = false;
+            var handlerTarget = null;
+
+            // Bind delegated handler
+            $container.on('click', '.target', function(e) {
+                handlerCalled = true;
+                handlerTarget = this;
+            });
+
+            // Click the span - this will bubble through text nodes
+            $container.find('.target').trigger('click');
+
+            assert.ok(handlerCalled, 'Handler was called');
+            assert.ok(handlerTarget.nodeType === 1, 'Handler target is an Element node');
+            assert.equal(handlerTarget.className, 'target', 'Handler target is the correct element');
+
+            $container.remove();
+        });
+
+        QUnit.test('Sibling handlers do not fire for non-matching selectors', function(assert) {
+            // This test verifies that a delegated handler with selector A does not fire
+            // when clicking on an element that matches selector B, even if both handlers
+            // are on the same parent element. This was the save-filter-btn bug.
+            var $parent = $('<div class="parent">' +
+                '<button class="save-btn">Save</button>' +
+                '<button class="delete-btn">Delete</button>' +
+            '</div>').appendTo('#qunit-fixture');
+
+            var saveCalled = false;
+            var deleteCalled = false;
+
+            // Bind both handlers to same parent
+            $parent.on('click', '.save-btn', function(e) {
+                saveCalled = true;
+            });
+
+            $parent.on('click', '.delete-btn', function(e) {
+                deleteCalled = true;
+            });
+
+            // Click delete button - only delete handler should fire
+            $parent.find('.delete-btn').trigger('click');
+
+            assert.ok(deleteCalled, 'Delete handler fired');
+            assert.ok(!saveCalled, 'Save handler did NOT fire');
+
+            // Reset and click save button
+            saveCalled = false;
+            deleteCalled = false;
+
+            $parent.find('.save-btn').trigger('click');
+
+            assert.ok(saveCalled, 'Save handler fired');
+            assert.ok(!deleteCalled, 'Delete handler did NOT fire');
+
+            $parent.remove();
+        });

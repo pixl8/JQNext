@@ -162,39 +162,56 @@ function createHandler(elem) {
     // Copy to avoid modification during iteration
     const handlersCopy = typeHandlers.slice();
     
+    // Pre-compute matching targets and depths for delegated handlers
+    // jQuery sorts delegated handlers by DOM depth - closer to event.target fires first
+    const handlerQueue = [];
+    
     for (let i = 0; i < handlersCopy.length; i++) {
       const handleObj = handlersCopy[i];
       
       // Check namespace match
-      if (event.namespace && !event.namespace.split('.').every(ns => 
+      if (event.namespace && !event.namespace.split('.').every(ns =>
         handleObj.namespace.includes(ns))) {
         continue;
       }
       
       // Check selector (delegation)
       let target;
+      let depth = 0;
       
       if (handleObj.selector) {
         // Find matching delegated target (use pseudo-aware matching)
         target = event.target;
+        depth = 0;
         while (target && target !== elem) {
           if (target.nodeType === 1 && matchesWithPseudo(target, handleObj.selector)) {
             break;
           }
           target = target.parentNode;
+          depth++;
         }
         
-        if (target === elem) {
-          continue; // No match found
+        // No match found if we reached the bound element or walked off the DOM
+        if (target === elem || target === null) {
+          continue;
         }
         
-        event.currentTarget = target;
+        handlerQueue.push({ handleObj, target, depth, isDelegated: true });
       } else {
         // For non-delegated events, this should be the element the handler is bound to
-        target = elem;
-        event.currentTarget = elem;
+        // Non-delegated handlers fire after all delegated handlers (jQuery behavior)
+        handlerQueue.push({ handleObj, target: elem, depth: Infinity, isDelegated: false });
       }
+    }
+    
+    // Sort by depth: delegated handlers closer to event.target fire first
+    // This matches jQuery behavior where inner elements' handlers fire before outer
+    handlerQueue.sort((a, b) => a.depth - b.depth);
+    
+    for (let i = 0; i < handlerQueue.length; i++) {
+      const { handleObj, target } = handlerQueue[i];
       
+      event.currentTarget = target;
       event.handleObj = handleObj;
       event.data = handleObj.data;
       
@@ -208,11 +225,11 @@ function createHandler(elem) {
       // Check for special handler
       const specialHandle = special[handleObj.origType]?.handle;
       if (specialHandle) {
-        result = specialHandle.apply(target || elem, args);
+        result = specialHandle.apply(target, args);
       }
       
       if (result === undefined) {
-        result = handleObj.handler.apply(target || elem, args);
+        result = handleObj.handler.apply(target, args);
       }
       
       if (result !== undefined) {

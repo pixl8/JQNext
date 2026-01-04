@@ -98,12 +98,12 @@ export function html(collection, value) {
     
     // Handle jQuery-like collections (object with length and elements)
     if (newValue && typeof newValue === 'object' && newValue.length !== undefined && !(newValue instanceof Node)) {
-      // It's a collection - empty and append each element
+      // It's a collection - empty and append each element (MOVE, not clone - jQuery behavior)
       this.textContent = '';
       for (let j = 0; j < newValue.length; j++) {
         const node = newValue[j];
         if (node instanceof Node) {
-          this.appendChild(node.cloneNode ? node.cloneNode(true) : node);
+          this.appendChild(node);  // Move the original node, don't clone
         }
       }
       return;
