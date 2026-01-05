@@ -261,10 +261,17 @@ function runAnimation(elem, properties, options) {
   setInternalData(elem, 'animations', animations);
   
   animation.onfinish = () => {
-    // Apply final values to style
-    for (const prop in to) {
-      elem.style[prop] = to[prop];
+    // Commit the animation styles to the element and cancel the animation
+    // This prevents fill: 'forwards' from continuing to apply styles
+    try {
+      animation.commitStyles();
+    } catch (e) {
+      // commitStyles may fail, manually apply styles
+      for (const prop in to) {
+        elem.style[prop] = to[prop];
+      }
     }
+    animation.cancel();
     
     // Remove from animations list
     const anims = getInternalData(elem, 'animations') || [];

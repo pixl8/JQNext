@@ -258,8 +258,7 @@ function querySelectorAllWithPseudo(selector, context = document) {
     // Then filter by jQuery pseudos
     return filterByPseudos(elements, pseudos);
   } catch (e) {
-    // If native fails (invalid selector), return empty
-    console.warn('Invalid selector:', selector, e);
+    // If native fails (invalid selector), return empty silently (jQuery behavior)
     return [];
   }
 }
@@ -1483,12 +1482,26 @@ class jQCollection {
     
     // Handle string selector
     if (isString(selector)) {
-      // HTML string: $('<div>') - but check for second arg being props object
-      if (selector[0] === '<' && selector[selector.length - 1] === '>' && selector.length >= 3) {
+      // Trim the selector for HTML detection
+      const trimmed = selector.trim();
+      
+      // HTML string: $('<div>') - detect HTML by looking for < at start of trimmed string
+      // Also handle strings that look like HTML (contain < followed by tag-like content)
+      const isHtml = trimmed[0] === '<' && trimmed[trimmed.length - 1] === '>' && trimmed.length >= 3;
+      // Also check for HTML fragments that might not start with < (like text nodes followed by tags)
+      // or have leading/trailing content - but primarily look for HTML tag patterns
+      const looksLikeHtml = !isHtml && (
+        // Check if it looks like HTML: contains <tagname or </ pattern
+        /<[a-zA-Z][^>]*>/.test(selector) ||
+        // Or starts with whitespace followed by <
+        /^\s*</.test(selector)
+      );
+      
+      if (isHtml || looksLikeHtml) {
         // Parse HTML
         const doc = context && context.ownerDocument ? context.ownerDocument :
                     (context && context.nodeType === 9 ? context : document);
-        const nodes = parseHTML(selector, doc, true);
+        const nodes = parseHTML(trimmed, doc, true);
         this._push(nodes || []);
         
         // Handle props object: $('<div/>', { class: 'foo', text: 'bar' })
@@ -1512,7 +1525,7 @@ class jQCollection {
         const elements = querySelectorAllWithPseudo(selector, contextElem);
         this._push(elements);
       } catch (e) {
-        // Invalid selector - return empty collection
+        // Invalid selector - return empty collection silently (jQuery behavior)
       }
       return this;
     }
@@ -2729,6 +2742,15 @@ function offsetParent(collection) {
 // Event handler storage using WeakMap
 const handlersStorage = new WeakMap();
 
+/**
+ * Get handlers storage for an element (for jQuery._data compatibility)
+ * @param {Element} elem
+ * @returns {Object|undefined} - The handlers object or undefined
+ */
+function getHandlersStorage(elem) {
+  return handlersStorage.get(elem);
+}
+
 // Special event types that need different handling
 const special = {
   // Focus/blur don't bubble, use focusin/focusout
@@ -2997,7 +3019,12 @@ function fixEvent(nativeEvent) {
     // Copy common properties
     button: nativeEvent.button,
     buttons: nativeEvent.buttons,
-    which: nativeEvent.which || nativeEvent.keyCode || nativeEvent.charCode,
+    // For keypress events, charCode is the character code (e.g., 96 for backtick)
+    // For keydown/keyup, keyCode is the key code
+    // which should be charCode for keypress, keyCode for keydown/keyup
+    which: nativeEvent.type === 'keypress'
+      ? (nativeEvent.charCode || nativeEvent.which || nativeEvent.keyCode)
+      : (nativeEvent.which || nativeEvent.keyCode),
     keyCode: nativeEvent.keyCode,
     charCode: nativeEvent.charCode,
     key: nativeEvent.key,
@@ -3348,12 +3375,6 @@ function triggerEvent(elem, event, data, propagate) {
   
   const { type, namespace, origType } = parsedTypes[0];
   
-  // Check special trigger
-  const specialTrigger = special[type]?.trigger;
-  if (specialTrigger?.call(elem, data) === false) {
-    return;
-  }
-  
   // Create event object
   let eventObj;
   
@@ -3400,8 +3421,12 @@ function triggerEvent(elem, event, data, propagate) {
     triggerEvent(elem.parentNode, eventObj, data, true);
   }
   
-  // Trigger native event if applicable
-  if (propagate && !eventObj.isDefaultPrevented()) {
+  // Check special trigger - if it returns false, it handles native behavior itself
+  const specialTrigger = special[type]?.trigger;
+  const specialHandled = specialTrigger?.call(elem, data) === false;
+  
+  // Trigger native event if applicable (unless special handler did it)
+  if (propagate && !eventObj.isDefaultPrevented() && !specialHandled) {
     const nativeEventName = 'on' + type;
     if (elem[nativeEventName] && isFunction(elem[type])) {
       // Temporarily prevent re-triggering
@@ -4008,19 +4033,12 @@ function clone(collection, withDataAndEvents = false, deepWithDataAndEvents = wi
 
 
 // Properties that should use .prop() instead of .attr()
+// jQuery only maps 'for' and 'class' in propFix
+// Other camelCase conversions should NOT be done here
+// because prop('contenteditable') should NOT map to contentEditable
 const propFix = {
   'for': 'htmlFor',
-  'class': 'className',
-  'tabindex': 'tabIndex',
-  'readonly': 'readOnly',
-  'maxlength': 'maxLength',
-  'cellspacing': 'cellSpacing',
-  'cellpadding': 'cellPadding',
-  'rowspan': 'rowSpan',
-  'colspan': 'colSpan',
-  'usemap': 'useMap',
-  'frameborder': 'frameBorder',
-  'contenteditable': 'contentEditable'
+  'class': 'className'
 };
 
 // Boolean attributes
@@ -5189,10 +5207,17 @@ function runAnimation(elem, properties, options) {
   setInternalData(elem, 'animations', animations);
   
   animation.onfinish = () => {
-    // Apply final values to style
-    for (const prop in to) {
-      elem.style[prop] = to[prop];
+    // Commit the animation styles to the element and cancel the animation
+    // This prevents fill: 'forwards' from continuing to apply styles
+    try {
+      animation.commitStyles();
+    } catch (e) {
+      // commitStyles may fail, manually apply styles
+      for (const prop in to) {
+        elem.style[prop] = to[prop];
+      }
     }
+    animation.cancel();
     
     // Remove from animations list
     const anims = getInternalData(elem, 'animations') || [];
@@ -5482,6 +5507,214 @@ function normalizeOptions(duration, easing, callback, useDefault = false) {
 }
 
 /**
+ * Helper: Show a single element
+ */
+function showElement(elem, duration, easing, callback) {
+  const options = normalizeOptions(duration, easing, callback);
+  
+  if (!options.duration) {
+    if (isHidden(elem)) {
+      elem.style.display = getInternalData(elem, 'olddisplay') || getDefaultDisplay(elem);
+    }
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  if (!isHidden(elem)) {
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  const display = getInternalData(elem, 'olddisplay') || getDefaultDisplay(elem);
+  elem.style.overflow = 'hidden';
+  elem.style.display = display;
+  const targetHeight = elem.offsetHeight;
+  const targetWidth = elem.offsetWidth;
+  elem.style.height = '0px';
+  elem.style.width = '0px';
+  elem.style.opacity = '0';
+  
+  animate({ 0: elem, length: 1 }, {
+    height: targetHeight,
+    width: targetWidth,
+    opacity: 1
+  }, {
+    duration: options.duration,
+    easing: options.easing,
+    complete: () => {
+      elem.style.overflow = '';
+      elem.style.height = '';
+      elem.style.width = '';
+      if (options.complete) options.complete.call(elem);
+    }
+  });
+}
+
+/**
+ * Helper: Hide a single element
+ */
+function hideElement(elem, duration, easing, callback) {
+  const options = normalizeOptions(duration, easing, callback);
+  
+  if (!options.duration) {
+    if (!isHidden(elem)) {
+      const display = getComputedStyle(elem).display;
+      if (display !== 'none') {
+        setInternalData(elem, 'olddisplay', display);
+      }
+      elem.style.display = 'none';
+    }
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  if (isHidden(elem)) {
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  const display = getComputedStyle(elem).display;
+  if (display !== 'none') {
+    setInternalData(elem, 'olddisplay', display);
+  }
+  elem.style.overflow = 'hidden';
+  
+  animate({ 0: elem, length: 1 }, {
+    height: 0,
+    width: 0,
+    opacity: 0
+  }, {
+    duration: options.duration,
+    easing: options.easing,
+    complete: () => {
+      elem.style.display = 'none';
+      elem.style.overflow = '';
+      elem.style.height = '';
+      elem.style.width = '';
+      elem.style.opacity = '';
+      if (options.complete) options.complete.call(elem);
+    }
+  });
+}
+
+/**
+ * Helper: Slide down a single element
+ */
+function slideDownElement(elem, duration, easing, callback) {
+  const options = normalizeOptions(duration, easing, callback);
+  
+  if (!isHidden(elem)) {
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  const display = getInternalData(elem, 'olddisplay') || getDefaultDisplay(elem);
+  elem.style.display = display;
+  elem.style.overflow = 'hidden';
+  const targetHeight = elem.offsetHeight;
+  elem.style.height = '0px';
+  
+  animate({ 0: elem, length: 1 }, {
+    height: targetHeight
+  }, {
+    duration: options.duration,
+    easing: options.easing,
+    complete: () => {
+      elem.style.overflow = '';
+      elem.style.height = '';
+      if (options.complete) options.complete.call(elem);
+    }
+  });
+}
+
+/**
+ * Helper: Slide up a single element
+ */
+function slideUpElement(elem, duration, easing, callback) {
+  const options = normalizeOptions(duration, easing, callback);
+  
+  if (isHidden(elem)) {
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  const display = getComputedStyle(elem).display;
+  if (display !== 'none') {
+    setInternalData(elem, 'olddisplay', display);
+  }
+  elem.style.overflow = 'hidden';
+  
+  animate({ 0: elem, length: 1 }, {
+    height: 0
+  }, {
+    duration: options.duration,
+    easing: options.easing,
+    complete: () => {
+      elem.style.display = 'none';
+      elem.style.overflow = '';
+      elem.style.height = '';
+      if (options.complete) options.complete.call(elem);
+    }
+  });
+}
+
+/**
+ * Helper: Fade in a single element
+ */
+function fadeInElement(elem, duration, easing, callback) {
+  const options = normalizeOptions(duration, easing, callback);
+  
+  if (!isHidden(elem) && getComputedStyle(elem).opacity !== '0') {
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  const display = getInternalData(elem, 'olddisplay') || getDefaultDisplay(elem);
+  elem.style.display = display;
+  elem.style.opacity = '0';
+  
+  animate({ 0: elem, length: 1 }, {
+    opacity: 1
+  }, {
+    duration: options.duration,
+    easing: options.easing,
+    complete: () => {
+      elem.style.opacity = '';
+      if (options.complete) options.complete.call(elem);
+    }
+  });
+}
+
+/**
+ * Helper: Fade out a single element
+ */
+function fadeOutElement(elem, duration, easing, callback) {
+  const options = normalizeOptions(duration, easing, callback);
+  
+  if (isHidden(elem)) {
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  const display = getComputedStyle(elem).display;
+  if (display !== 'none') {
+    setInternalData(elem, 'olddisplay', display);
+  }
+  
+  animate({ 0: elem, length: 1 }, {
+    opacity: 0
+  }, {
+    duration: options.duration,
+    easing: options.easing,
+    complete: () => {
+      elem.style.display = 'none';
+      elem.style.opacity = '';
+      if (options.complete) options.complete.call(elem);
+    }
+  });
+}
+
+/**
  * Show elements with optional animation
  * @param {jQCollection} collection
  * @param {number|string|Object} [duration]
@@ -5622,10 +5855,11 @@ function toggle(collection, state, easing, callback) {
   }
   
   return collection.each(function() {
-    if (isHidden(this)) {
-      show({ 0: this, length: 1 }, state, easing, callback);
+    const elem = this;
+    if (isHidden(elem)) {
+      showElement(elem, state, easing, callback);
     } else {
-      hide({ 0: this, length: 1 }, state, easing, callback);
+      hideElement(elem, state, easing, callback);
     }
   });
 }
@@ -5721,10 +5955,11 @@ function slideUp(collection, duration, easing, callback) {
  */
 function slideToggle(collection, duration, easing, callback) {
   return collection.each(function() {
-    if (isHidden(this)) {
-      slideDown({ 0: this, length: 1 }, duration, easing, callback);
+    const elem = this;
+    if (isHidden(elem)) {
+      slideDownElement(elem, duration, easing, callback);
     } else {
-      slideUp({ 0: this, length: 1 }, duration, easing, callback);
+      slideUpElement(elem, duration, easing, callback);
     }
   });
 }
@@ -5839,10 +6074,11 @@ function fadeTo(collection, duration, opacity, callback) {
  */
 function fadeToggle(collection, duration, easing, callback) {
   return collection.each(function() {
-    if (isHidden(this) || getComputedStyle(this).opacity === '0') {
-      fadeIn({ 0: this, length: 1 }, duration, easing, callback);
+    const elem = this;
+    if (isHidden(elem) || getComputedStyle(elem).opacity === '0') {
+      fadeInElement(elem, duration, easing, callback);
     } else {
-      fadeOut({ 0: this, length: 1 }, duration, easing, callback);
+      fadeOutElement(elem, duration, easing, callback);
     }
   });
 }
@@ -7101,7 +7337,16 @@ jQNext.fn.constructor = jQNext;
 // ==================================================
 
 // Utilities
-jQNext.extend = extend;
+// Wrap extend to handle the $.extend(obj) single-argument case
+// When called with a single non-boolean object, it should extend jQNext itself
+jQNext.extend = function(deep, target, ...sources) {
+  // Single argument case: $.extend({foo: 'bar'}) should extend $ itself
+  if (arguments.length === 1 && typeof deep === 'object' && deep !== null) {
+    return extend(jQNext, deep);
+  }
+  // Normal case: delegate to extend
+  return extend(deep, target, ...sources);
+};
 jQNext.each = each;
 jQNext.map = map;
 jQNext.grep = grep;
@@ -7170,6 +7415,11 @@ jQNext.removeData = function(elem, name) {
 jQNext.hasData = hasData;
 jQNext._data = function(elem, name, value) {
   // Internal data (for jQuery internals/plugins)
+  // Special case: get 'events' returns event handlers storage
+  if (name === 'events' && value === undefined) {
+    const handlers = getHandlersStorage(elem);
+    return handlers ? handlers.events : undefined;
+  }
   // Getter
   if (value === undefined && typeof name !== 'object') {
     return getDataValue(elem, '_' + name);

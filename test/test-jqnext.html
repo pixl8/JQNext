@@ -29,6 +29,69 @@
 <body>
     <div id="qunit"></div>
     <div id="qunit-fixture">
+        <!-- Basic Test Elements -->
+        <div id="test-div" class="test-class" data-value="123" data-json='{"key":"value"}'>
+            <p id="test-p">Test paragraph</p>
+            <span id="test-span">Test span</span>
+        </div>
+        <div id="test-div2">Second div</div>
+        
+        <!-- Test List -->
+        <ul id="test-list">
+            <li>Item 1</li>
+            <li class="special">Item 2</li>
+            <li>Item 3</li>
+        </ul>
+        
+        <!-- Test Form -->
+        <form id="test-form">
+            <input type="text" id="test-input" name="field1" value="test value">
+            <input type="hidden" name="field2" value="value2">
+            <input type="text" name="field1" value="value1">
+            <select name="sel">
+                <option value="opt1">Option 1</option>
+                <option value="opt2" selected>Option 2</option>
+            </select>
+        </form>
+        
+        <!-- Form Tests -->
+        <form id="form-tests" autocomplete="off" action="javascript:void(0)" onsubmit="return false">
+            <input type="text" id="text-input" name="text-input" value="initial text" autocomplete="off">
+            <input type="password" id="password-input" name="password-input" value="secret" autocomplete="new-password">
+            <input type="hidden" id="hidden-input" name="hidden-input" value="hidden-val">
+            <textarea id="textarea-input" name="textarea-input">initial textarea</textarea>
+            
+            <select id="single-select" name="single-select">
+                <option value="s1">Option 1</option>
+                <option value="s2" selected>Option 2</option>
+                <option value="s3">Option 3</option>
+            </select>
+            
+            <select id="multi-select" name="multi-select" multiple>
+                <option value="m1" selected>Multi 1</option>
+                <option value="m2">Multi 2</option>
+                <option value="m3" selected>Multi 3</option>
+            </select>
+            
+            <input type="checkbox" id="checkbox1" name="checkbox1" value="cb1" checked>
+            <input type="checkbox" id="checkbox2" name="checkbox2" value="cb2">
+            
+            <input type="radio" id="radio1" name="radiogroup" value="r1" checked>
+            <input type="radio" id="radio2" name="radiogroup" value="r2">
+            <input type="radio" id="radio3" name="radiogroup" value="r3">
+            
+            <input type="text" id="disabled-input" name="disabled-input" disabled value="disabled">
+            <input type="text" id="readonly-input" name="readonly-input" readonly value="readonly">
+            
+            <button id="test-button" type="button" data-loading-text="Loading...">Click Me</button>
+        </form>
+        
+        <!-- Focus Test Container -->
+        <div id="focus-test-container">
+            <input type="text" id="focus-input-1">
+            <input type="text" id="focus-input-2">
+        </div>
+
         <!-- Dimension Tests -->
         <div id="dimension-test"></div>
 
@@ -58,6 +121,5 @@
     <script src="./lib/qunit/qunit.js"></script>
     <script src="./lib/jqnext.js"></script>
     <script src="./tests.js"></script>
-    <script src="./comprehensive-compatibility-tests.js"></script>
 </body>
 </html>

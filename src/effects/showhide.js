@@ -76,6 +76,214 @@ function normalizeOptions(duration, easing, callback, useDefault = false) {
 }
 
 /**
+ * Helper: Show a single element
+ */
+function showElement(elem, duration, easing, callback) {
+  const options = normalizeOptions(duration, easing, callback);
+  
+  if (!options.duration) {
+    if (isHidden(elem)) {
+      elem.style.display = getInternalData(elem, 'olddisplay') || getDefaultDisplay(elem);
+    }
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  if (!isHidden(elem)) {
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  const display = getInternalData(elem, 'olddisplay') || getDefaultDisplay(elem);
+  elem.style.overflow = 'hidden';
+  elem.style.display = display;
+  const targetHeight = elem.offsetHeight;
+  const targetWidth = elem.offsetWidth;
+  elem.style.height = '0px';
+  elem.style.width = '0px';
+  elem.style.opacity = '0';
+  
+  animate({ 0: elem, length: 1 }, {
+    height: targetHeight,
+    width: targetWidth,
+    opacity: 1
+  }, {
+    duration: options.duration,
+    easing: options.easing,
+    complete: () => {
+      elem.style.overflow = '';
+      elem.style.height = '';
+      elem.style.width = '';
+      if (options.complete) options.complete.call(elem);
+    }
+  });
+}
+
+/**
+ * Helper: Hide a single element
+ */
+function hideElement(elem, duration, easing, callback) {
+  const options = normalizeOptions(duration, easing, callback);
+  
+  if (!options.duration) {
+    if (!isHidden(elem)) {
+      const display = getComputedStyle(elem).display;
+      if (display !== 'none') {
+        setInternalData(elem, 'olddisplay', display);
+      }
+      elem.style.display = 'none';
+    }
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  if (isHidden(elem)) {
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  const display = getComputedStyle(elem).display;
+  if (display !== 'none') {
+    setInternalData(elem, 'olddisplay', display);
+  }
+  elem.style.overflow = 'hidden';
+  
+  animate({ 0: elem, length: 1 }, {
+    height: 0,
+    width: 0,
+    opacity: 0
+  }, {
+    duration: options.duration,
+    easing: options.easing,
+    complete: () => {
+      elem.style.display = 'none';
+      elem.style.overflow = '';
+      elem.style.height = '';
+      elem.style.width = '';
+      elem.style.opacity = '';
+      if (options.complete) options.complete.call(elem);
+    }
+  });
+}
+
+/**
+ * Helper: Slide down a single element
+ */
+function slideDownElement(elem, duration, easing, callback) {
+  const options = normalizeOptions(duration, easing, callback);
+  
+  if (!isHidden(elem)) {
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  const display = getInternalData(elem, 'olddisplay') || getDefaultDisplay(elem);
+  elem.style.display = display;
+  elem.style.overflow = 'hidden';
+  const targetHeight = elem.offsetHeight;
+  elem.style.height = '0px';
+  
+  animate({ 0: elem, length: 1 }, {
+    height: targetHeight
+  }, {
+    duration: options.duration,
+    easing: options.easing,
+    complete: () => {
+      elem.style.overflow = '';
+      elem.style.height = '';
+      if (options.complete) options.complete.call(elem);
+    }
+  });
+}
+
+/**
+ * Helper: Slide up a single element
+ */
+function slideUpElement(elem, duration, easing, callback) {
+  const options = normalizeOptions(duration, easing, callback);
+  
+  if (isHidden(elem)) {
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  const display = getComputedStyle(elem).display;
+  if (display !== 'none') {
+    setInternalData(elem, 'olddisplay', display);
+  }
+  elem.style.overflow = 'hidden';
+  
+  animate({ 0: elem, length: 1 }, {
+    height: 0
+  }, {
+    duration: options.duration,
+    easing: options.easing,
+    complete: () => {
+      elem.style.display = 'none';
+      elem.style.overflow = '';
+      elem.style.height = '';
+      if (options.complete) options.complete.call(elem);
+    }
+  });
+}
+
+/**
+ * Helper: Fade in a single element
+ */
+function fadeInElement(elem, duration, easing, callback) {
+  const options = normalizeOptions(duration, easing, callback);
+  
+  if (!isHidden(elem) && getComputedStyle(elem).opacity !== '0') {
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  const display = getInternalData(elem, 'olddisplay') || getDefaultDisplay(elem);
+  elem.style.display = display;
+  elem.style.opacity = '0';
+  
+  animate({ 0: elem, length: 1 }, {
+    opacity: 1
+  }, {
+    duration: options.duration,
+    easing: options.easing,
+    complete: () => {
+      elem.style.opacity = '';
+      if (options.complete) options.complete.call(elem);
+    }
+  });
+}
+
+/**
+ * Helper: Fade out a single element
+ */
+function fadeOutElement(elem, duration, easing, callback) {
+  const options = normalizeOptions(duration, easing, callback);
+  
+  if (isHidden(elem)) {
+    if (options.complete) options.complete.call(elem);
+    return;
+  }
+  
+  const display = getComputedStyle(elem).display;
+  if (display !== 'none') {
+    setInternalData(elem, 'olddisplay', display);
+  }
+  
+  animate({ 0: elem, length: 1 }, {
+    opacity: 0
+  }, {
+    duration: options.duration,
+    easing: options.easing,
+    complete: () => {
+      elem.style.display = 'none';
+      elem.style.opacity = '';
+      if (options.complete) options.complete.call(elem);
+    }
+  });
+}
+
+/**
  * Show elements with optional animation
  * @param {jQCollection} collection
  * @param {number|string|Object} [duration]
@@ -216,10 +424,11 @@ export function toggle(collection, state, easing, callback) {
   }
   
   return collection.each(function() {
-    if (isHidden(this)) {
-      show({ 0: this, length: 1 }, state, easing, callback);
+    const elem = this;
+    if (isHidden(elem)) {
+      showElement(elem, state, easing, callback);
     } else {
-      hide({ 0: this, length: 1 }, state, easing, callback);
+      hideElement(elem, state, easing, callback);
     }
   });
 }
@@ -315,10 +524,11 @@ export function slideUp(collection, duration, easing, callback) {
  */
 export function slideToggle(collection, duration, easing, callback) {
   return collection.each(function() {
-    if (isHidden(this)) {
-      slideDown({ 0: this, length: 1 }, duration, easing, callback);
+    const elem = this;
+    if (isHidden(elem)) {
+      slideDownElement(elem, duration, easing, callback);
     } else {
-      slideUp({ 0: this, length: 1 }, duration, easing, callback);
+      slideUpElement(elem, duration, easing, callback);
     }
   });
 }
@@ -433,10 +643,11 @@ export function fadeTo(collection, duration, opacity, callback) {
  */
 export function fadeToggle(collection, duration, easing, callback) {
   return collection.each(function() {
-    if (isHidden(this) || getComputedStyle(this).opacity === '0') {
-      fadeIn({ 0: this, length: 1 }, duration, easing, callback);
+    const elem = this;
+    if (isHidden(elem) || getComputedStyle(elem).opacity === '0') {
+      fadeInElement(elem, duration, easing, callback);
     } else {
-      fadeOut({ 0: this, length: 1 }, duration, easing, callback);
+      fadeOutElement(elem, duration, easing, callback);
     }
   });
 }

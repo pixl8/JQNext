@@ -346,3 +346,4 @@ MIT
 
 - Inspired by jQuery by The jQuery Foundation
 - Modern implementation for Preside CMS
+- Produced by Pixl8 Group Limited

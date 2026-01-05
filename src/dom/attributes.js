@@ -7,19 +7,12 @@ import { isFunction, isString, isArray } from '../utilities/type.js';
 import { camelCase } from '../utilities/strings.js';
 
 // Properties that should use .prop() instead of .attr()
+// jQuery only maps 'for' and 'class' in propFix
+// Other camelCase conversions should NOT be done here
+// because prop('contenteditable') should NOT map to contentEditable
 const propFix = {
   'for': 'htmlFor',
-  'class': 'className',
-  'tabindex': 'tabIndex',
-  'readonly': 'readOnly',
-  'maxlength': 'maxLength',
-  'cellspacing': 'cellSpacing',
-  'cellpadding': 'cellPadding',
-  'rowspan': 'rowSpan',
-  'colspan': 'colSpan',
-  'usemap': 'useMap',
-  'frameborder': 'frameBorder',
-  'contenteditable': 'contentEditable'
+  'class': 'className'
 };
 
 // Boolean attributes

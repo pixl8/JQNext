@@ -40,7 +40,7 @@ import * as cssModule from './dom/css.js';
 import { cssHooks } from './dom/css.js';
 
 // Events
-import { on, off, one, trigger, triggerHandler, special, parseEventTypes } from './events/core.js';
+import { on, off, one, trigger, triggerHandler, special, parseEventTypes, getHandlersStorage } from './events/core.js';
 import * as eventShortcuts from './events/shortcuts.js';
 
 // Effects
@@ -87,7 +87,16 @@ jQNext.fn.constructor = jQNext;
 // ==================================================
 
 // Utilities
-jQNext.extend = extend;
+// Wrap extend to handle the $.extend(obj) single-argument case
+// When called with a single non-boolean object, it should extend jQNext itself
+jQNext.extend = function(deep, target, ...sources) {
+  // Single argument case: $.extend({foo: 'bar'}) should extend $ itself
+  if (arguments.length === 1 && typeof deep === 'object' && deep !== null) {
+    return extend(jQNext, deep);
+  }
+  // Normal case: delegate to extend
+  return extend(deep, target, ...sources);
+};
 jQNext.each = each;
 jQNext.map = map;
 jQNext.grep = grep;
@@ -156,6 +165,11 @@ jQNext.removeData = function(elem, name) {
 jQNext.hasData = hasData;
 jQNext._data = function(elem, name, value) {
   // Internal data (for jQuery internals/plugins)
+  // Special case: get 'events' returns event handlers storage
+  if (name === 'events' && value === undefined) {
+    const handlers = getHandlersStorage(elem);
+    return handlers ? handlers.events : undefined;
+  }
   // Getter
   if (value === undefined && typeof name !== 'object') {
     return getDataValue(elem, '_' + name);

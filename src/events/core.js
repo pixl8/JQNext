@@ -10,6 +10,15 @@ import { matchesWithPseudo } from '../selectors/pseudo.js';
 // Event handler storage using WeakMap
 const handlersStorage = new WeakMap();
 
+/**
+ * Get handlers storage for an element (for jQuery._data compatibility)
+ * @param {Element} elem
+ * @returns {Object|undefined} - The handlers object or undefined
+ */
+export function getHandlersStorage(elem) {
+  return handlersStorage.get(elem);
+}
+
 // Special event types that need different handling
 export const special = {
   // Focus/blur don't bubble, use focusin/focusout
@@ -278,7 +287,12 @@ function fixEvent(nativeEvent) {
     // Copy common properties
     button: nativeEvent.button,
     buttons: nativeEvent.buttons,
-    which: nativeEvent.which || nativeEvent.keyCode || nativeEvent.charCode,
+    // For keypress events, charCode is the character code (e.g., 96 for backtick)
+    // For keydown/keyup, keyCode is the key code
+    // which should be charCode for keypress, keyCode for keydown/keyup
+    which: nativeEvent.type === 'keypress'
+      ? (nativeEvent.charCode || nativeEvent.which || nativeEvent.keyCode)
+      : (nativeEvent.which || nativeEvent.keyCode),
     keyCode: nativeEvent.keyCode,
     charCode: nativeEvent.charCode,
     key: nativeEvent.key,
@@ -629,12 +643,6 @@ function triggerEvent(elem, event, data, propagate) {
   
   const { type, namespace, origType } = parsedTypes[0];
   
-  // Check special trigger
-  const specialTrigger = special[type]?.trigger;
-  if (specialTrigger?.call(elem, data) === false) {
-    return;
-  }
-  
   // Create event object
   let eventObj;
   
@@ -681,8 +689,12 @@ function triggerEvent(elem, event, data, propagate) {
     triggerEvent(elem.parentNode, eventObj, data, true);
   }
   
-  // Trigger native event if applicable
-  if (propagate && !eventObj.isDefaultPrevented()) {
+  // Check special trigger - if it returns false, it handles native behavior itself
+  const specialTrigger = special[type]?.trigger;
+  const specialHandled = specialTrigger?.call(elem, data) === false;
+  
+  // Trigger native event if applicable (unless special handler did it)
+  if (propagate && !eventObj.isDefaultPrevented() && !specialHandled) {
     const nativeEventName = 'on' + type;
     if (elem[nativeEventName] && isFunction(elem[type])) {
       // Temporarily prevent re-triggering

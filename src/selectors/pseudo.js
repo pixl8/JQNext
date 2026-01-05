@@ -248,8 +248,7 @@ export function querySelectorAllWithPseudo(selector, context = document) {
     // Then filter by jQuery pseudos
     return filterByPseudos(elements, pseudos);
   } catch (e) {
-    // If native fails (invalid selector), return empty
-    console.warn('Invalid selector:', selector, e);
+    // If native fails (invalid selector), return empty silently (jQuery behavior)
     return [];
   }
 }

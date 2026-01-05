@@ -9,6 +9,1307 @@ if (typeof window.presideJQuery !== 'undefined') {
     window.$ = window.jQuery || window.jQNext;
 }
 
+        // ==========================================
+        // CORE MODULE
+        // ==========================================
+        QUnit.module('Core');
+
+        QUnit.test('jQuery exists and has version', function(assert) {
+            assert.ok(jQuery, 'jQuery exists');
+            assert.ok($, '$ exists');
+            assert.equal(jQuery, $, 'jQuery and $ are the same');
+            assert.ok(jQuery.fn.jquery, 'Has version string');
+        });
+        
+        QUnit.test('$.isReady', function(assert) {
+            assert.equal(typeof jQuery.isReady, 'boolean', '$.isReady is boolean');
+            assert.equal(jQuery.isReady, true, '$.isReady is true after DOM ready');
+        });
+        
+        QUnit.test('jQuery() constructor edge cases', function(assert) {
+            assert.equal(jQuery().length, 0, 'jQuery() returns empty collection');
+            assert.equal(jQuery(undefined).length, 0, 'jQuery(undefined) returns empty');
+            assert.equal(jQuery(null).length, 0, 'jQuery(null) returns empty');
+            assert.equal(jQuery('').length, 0, 'jQuery("") returns empty');
+            assert.equal(jQuery('#').length, 0, 'jQuery("#") returns empty');
+        });
+        
+        QUnit.test('jQuery(html) creates elements', function(assert) {
+            var div = jQuery('<div>');
+            assert.equal(div.length, 1, 'Creates single element');
+            assert.equal(div[0].nodeName.toLowerCase(), 'div', 'Element is div');
+            
+            var multi = jQuery('<div><span></span></div>');
+            assert.equal(multi.length, 1, 'Creates nested elements');
+            assert.equal(multi.find('span').length, 1, 'Has nested span');
+        });
+        
+        QUnit.test('jQuery(html, props) quick setter', function(assert) {
+            var div = jQuery('<div/>', {
+                'class': 'test-class',
+                id: 'quick-test',
+                text: 'Hello'
+            });
+            assert.ok(div.hasClass('test-class'), 'Sets class via props');
+            assert.equal(div.attr('id'), 'quick-test', 'Sets id via props');
+            assert.equal(div.text(), 'Hello', 'Sets text via props');
+        });
+        
+        QUnit.test('jQuery collection has selector property', function(assert) {
+            var coll = jQuery('#test-div');
+            assert.equal(coll.selector, '#test-div', 'Collection has selector');
+        });
+        
+        QUnit.test('$.extend', function(assert) {
+            var obj1 = { a: 1 };
+            var obj2 = { b: 2 };
+            var result = $.extend(obj1, obj2);
+            assert.equal(result.a, 1, 'Has property from first object');
+            assert.equal(result.b, 2, 'Has property from second object');
+            assert.equal(obj1, result, 'Returns first object');
+            
+            // Deep extend
+            var deep = $.extend(true, {}, { a: { b: 1 } }, { a: { c: 2 } });
+            assert.equal(deep.a.b, 1, 'Deep extend preserves nested');
+            assert.equal(deep.a.c, 2, 'Deep extend merges nested');
+        });
+        
+        QUnit.test('$.isFunction', function(assert) {
+            assert.ok($.isFunction(function(){}), 'Function is function');
+            assert.ok(!$.isFunction({}), 'Object is not function');
+            assert.ok(!$.isFunction('string'), 'String is not function');
+        });
+        
+        QUnit.test('$.isArray', function(assert) {
+            assert.ok($.isArray([]), 'Empty array is array');
+            assert.ok($.isArray([1, 2, 3]), 'Array with items is array');
+            assert.ok(!$.isArray({}), 'Object is not array');
+        });
+        
+        QUnit.test('$.isPlainObject', function(assert) {
+            assert.ok($.isPlainObject({}), 'Empty object is plain object');
+            assert.ok($.isPlainObject({ a: 1 }), 'Object literal is plain object');
+            assert.ok(!$.isPlainObject([]), 'Array is not plain object');
+            assert.ok(!$.isPlainObject(null), 'null is not plain object');
+        });
+        
+        QUnit.test('$.isNumeric', function(assert) {
+            assert.ok($.isNumeric(123), 'Number is numeric');
+            assert.ok($.isNumeric('123'), 'Numeric string is numeric');
+            assert.ok($.isNumeric(1.5), 'Float is numeric');
+            assert.ok(!$.isNumeric('abc'), 'Non-numeric string is not numeric');
+            assert.ok(!$.isNumeric(NaN), 'NaN is not numeric');
+        });
+        
+        QUnit.test('$.isEmptyObject', function(assert) {
+            assert.ok($.isEmptyObject({}), 'Empty object is empty');
+            assert.ok(!$.isEmptyObject({ a: 1 }), 'Object with property is not empty');
+        });
+        
+        QUnit.test('$.isXMLDoc', function(assert) {
+            assert.ok(typeof $.isXMLDoc === 'function', '$.isXMLDoc exists');
+            assert.ok(!$.isXMLDoc(document), 'HTML document is not XML');
+        });
+        
+        QUnit.test('$.nodeName', function(assert) {
+            assert.ok(typeof $.nodeName === 'function', '$.nodeName exists');
+            assert.ok($.nodeName(document.body, 'body'), 'Matches body element');
+        });
+        
+        QUnit.test('$.trim', function(assert) {
+            assert.equal($.trim('  hello  '), 'hello', 'Trims spaces');
+            assert.equal($.trim('\t\nhello\n\t'), 'hello', 'Trims tabs and newlines');
+            assert.equal($.trim('hello'), 'hello', 'No change when nothing to trim');
+        });
+        
+        QUnit.test('$.parseHTML', function(assert) {
+            var result = $.parseHTML('<div>test</div>');
+            assert.ok(Array.isArray(result), 'Returns array');
+            assert.equal(result.length, 1, 'Has one element');
+            assert.equal(result[0].nodeName.toLowerCase(), 'div', 'Element is div');
+            
+            assert.equal($.parseHTML(null), null, 'Returns null for null input');
+            assert.equal($.parseHTML(''), null, 'Returns null for empty string');
+        });
+        
+        QUnit.test('$.parseJSON', function(assert) {
+            var result = $.parseJSON('{"a":1}');
+            assert.deepEqual(result, { a: 1 }, 'Parses JSON');
+        });
+        
+        QUnit.test('$.type', function(assert) {
+            assert.equal($.type([]), 'array', 'Array type');
+            assert.equal($.type({}), 'object', 'Object type');
+            assert.equal($.type(function(){}), 'function', 'Function type');
+            assert.equal($.type(''), 'string', 'String type');
+            assert.equal($.type(1), 'number', 'Number type');
+            assert.equal($.type(null), 'null', 'Null type');
+            assert.equal($.type(undefined), 'undefined', 'Undefined type');
+        });
+        
+        // ==========================================
+        // SELECTORS MODULE
+        // ==========================================
+        QUnit.module('Selectors');
+        
+        QUnit.test('Basic selection', function(assert) {
+            assert.equal($('#test-div').length, 1, 'ID selector');
+            assert.equal($('.test-class').length, 1, 'Class selector');
+            assert.equal($('div').length >= 1, true, 'Tag selector');
+        });
+        
+        QUnit.test('Context selection', function(assert) {
+            var inputs = $('input', '#test-form');
+            assert.ok(inputs.length >= 2, 'Finds inputs within context');
+        });
+        
+        QUnit.test('Pseudo selectors', function(assert) {
+            var inputs = $('#qunit-fixture :input');
+            assert.ok(inputs.length > 0, ':input pseudo selector works');
+            
+            var checked = $('#qunit-fixture :checked');
+            assert.ok(checked.length > 0, ':checked pseudo selector works');
+        });
+        
+        QUnit.test(':first and :last pseudo selectors', function(assert) {
+            var first = $('#test-list li:first');
+            assert.equal(first.length, 1, ':first returns one element');
+            assert.equal(first.text(), 'Item 1', ':first is correct element');
+            
+            var last = $('#test-list li:last');
+            assert.equal(last.length, 1, ':last returns one element');
+            assert.equal(last.text(), 'Item 3', ':last is correct element');
+        });
+        
+        QUnit.test(':eq() pseudo selector', function(assert) {
+            var second = $('#test-list li:eq(1)');
+            assert.equal(second.length, 1, ':eq(1) returns one element');
+            assert.equal(second.text(), 'Item 2', ':eq(1) is correct element');
+        });
+        
+        QUnit.test(':contains() pseudo selector', function(assert) {
+            var contains = $('#test-list li:contains("Item 2")');
+            assert.equal(contains.length, 1, ':contains finds element with text');
+        });
+        
+        QUnit.test(':has() pseudo selector', function(assert) {
+            var has = $('#qunit-fixture div:has(p)');
+            assert.ok(has.length >= 1, ':has finds elements containing selector');
+        });
+        
+        // ==========================================
+        // ATTRIBUTES MODULE
+        // ==========================================
+        QUnit.module('Attributes');
+        
+        QUnit.test('.attr() getter', function(assert) {
+            assert.equal($('#test-div').attr('id'), 'test-div', 'Gets existing attribute');
+            assert.equal($('#test-div').attr('nonexistent'), undefined, 'Returns undefined for non-existent attr');
+        });
+        
+        QUnit.test('.attr() setter', function(assert) {
+            $('#test-div').attr('data-new', 'newvalue');
+            assert.equal($('#test-div').attr('data-new'), 'newvalue', 'Sets attribute');
+            $('#test-div').removeAttr('data-new');
+        });
+        
+        QUnit.test('.removeAttr()', function(assert) {
+            $('#test-div').attr('data-remove', 'value');
+            assert.equal($('#test-div').attr('data-remove'), 'value', 'Attribute exists');
+            $('#test-div').removeAttr('data-remove');
+            assert.equal($('#test-div').attr('data-remove'), undefined, 'Attribute removed');
+        });
+        
+        QUnit.test('.prop()', function(assert) {
+            assert.equal($('#test-input').prop('type'), 'text', 'Gets property');
+            $('#test-input').prop('disabled', true);
+            assert.equal($('#test-input').prop('disabled'), true, 'Sets property');
+            $('#test-input').prop('disabled', false);
+        });
+        
+        QUnit.test('.val()', function(assert) {
+            assert.equal($('#test-input').val(), 'test value', 'Gets input value');
+            $('#test-input').val('new value');
+            assert.equal($('#test-input').val(), 'new value', 'Sets input value');
+            $('#test-input').val('test value');
+            
+            // Select element
+            assert.equal($('#test-form select').val(), 'opt2', 'Gets select value');
+        });
+        
+        QUnit.test('.addClass() and .removeClass()', function(assert) {
+            $('#test-div').addClass('new-class');
+            assert.ok($('#test-div').hasClass('new-class'), 'addClass adds class');
+            $('#test-div').removeClass('new-class');
+            assert.ok(!$('#test-div').hasClass('new-class'), 'removeClass removes class');
+        });
+        
+        QUnit.test('.toggleClass()', function(assert) {
+            $('#test-div').toggleClass('toggle-test');
+            assert.ok($('#test-div').hasClass('toggle-test'), 'Toggle adds class');
+            $('#test-div').toggleClass('toggle-test');
+            assert.ok(!$('#test-div').hasClass('toggle-test'), 'Toggle removes class');
+        });
+        
+        // ==========================================
+        // TRAVERSAL MODULE
+        // ==========================================
+        QUnit.module('Traversal');
+        
+        QUnit.test('.find()', function(assert) {
+            var found = $('#test-div').find('p');
+            assert.equal(found.length, 1, 'find() returns matching descendants');
+        });
+        
+        QUnit.test('.parent()', function(assert) {
+            var parent = $('#test-p').parent();
+            assert.equal(parent.attr('id'), 'test-div', 'parent() returns parent');
+        });
+        
+        QUnit.test('.parents()', function(assert) {
+            var parents = $('#test-p').parents();
+            assert.ok(parents.length > 1, 'parents() returns multiple ancestors');
+        });
+        
+        QUnit.test('.closest()', function(assert) {
+            var closest = $('#test-p').closest('div');
+            assert.equal(closest.attr('id'), 'test-div', 'closest() finds ancestor');
+        });
+        
+        QUnit.test('.children()', function(assert) {
+            var children = $('#test-div').children();
+            assert.ok(children.length > 0, 'children() returns child elements');
+        });
+        
+        QUnit.test('.siblings()', function(assert) {
+            var siblings = $('#test-p').siblings();
+            assert.ok(siblings.length > 0, 'siblings() returns sibling elements');
+        });
+        
+        QUnit.test('.next() and .prev()', function(assert) {
+            var items = $('#test-list li');
+            var second = items.eq(1);
+            assert.equal(second.prev().text(), 'Item 1', 'prev() returns previous');
+            assert.equal(second.next().text(), 'Item 3', 'next() returns next');
+        });
+        
+        QUnit.test('.filter()', function(assert) {
+            var filtered = $('#test-div, #test-p').filter('#test-p');
+            assert.equal(filtered.length, 1, 'filter() filters collection');
+            assert.equal(filtered.attr('id'), 'test-p', 'Filtered element is correct');
+        });
+        
+        QUnit.test('.not()', function(assert) {
+            var notFiltered = $('#test-list li').not('.special');
+            assert.equal(notFiltered.length, 2, 'not() excludes matching');
+        });
+        
+        QUnit.test('.is()', function(assert) {
+            assert.ok($('#test-div').is('.test-class'), 'is() returns true for match');
+            assert.ok(!$('#test-div').is('.nonexistent'), 'is() returns false for no match');
+        });
+        
+        QUnit.test('.eq(), .first(), .last()', function(assert) {
+            var items = $('#test-list li');
+            assert.equal(items.eq(1).text(), 'Item 2', 'eq(1) returns second item');
+            assert.equal(items.first().text(), 'Item 1', 'first() returns first');
+            assert.equal(items.last().text(), 'Item 3', 'last() returns last');
+        });
+        
+        QUnit.test('.slice()', function(assert) {
+            var items = $('#test-list li').slice(1, 3);
+            assert.equal(items.length, 2, 'slice() returns subset');
+        });
+        
+        QUnit.test('.end()', function(assert) {
+            var items = $('#test-list').find('li').end();
+            assert.equal(items.attr('id'), 'test-list', 'end() returns previous collection');
+        });
+        
+        QUnit.test('.add()', function(assert) {
+            var combined = $('#test-div').add('#test-div2');
+            assert.equal(combined.length, 2, 'add() combines collections');
+        });
+        
+        QUnit.test('.index()', function(assert) {
+            var second = $('#test-list li').eq(1);
+            assert.equal(second.index(), 1, 'index() returns position in parent');
+        });
+        
+        // ==========================================
+        // MANIPULATION MODULE
+        // ==========================================
+        QUnit.module('Manipulation');
+        
+        QUnit.test('.html()', function(assert) {
+            var html = $('#test-p').html();
+            assert.equal(html, 'Test paragraph', 'Gets HTML');
+            $('#test-p').html('<span>new content</span>');
+            assert.equal($('#test-p span').length, 1, 'Sets HTML');
+            $('#test-p').html('Test paragraph');
+        });
+        
+        QUnit.test('.text()', function(assert) {
+            var text = $('#test-p').text();
+            assert.equal(text, 'Test paragraph', 'Gets text');
+            
+            $('#test-p').text('New text');
+            assert.equal($('#test-p').text(), 'New text', 'Sets text');
+            $('#test-p').text('Test paragraph');
+        });
+        
+        QUnit.test('.append()', function(assert) {
+            var originalCount = $('#test-div').children().length;
+            $('#test-div').append('<span class="appended">appended</span>');
+            assert.equal($('#test-div').children().length, originalCount + 1, 'append() adds element');
+            $('#test-div .appended').remove();
+        });
+        
+        QUnit.test('.prepend()', function(assert) {
+            $('#test-list').prepend('<li class="prepended">Prepended</li>');
+            assert.equal($('#test-list li').first().text(), 'Prepended', 'prepend() adds at start');
+            $('#test-list .prepended').remove();
+        });
+        
+        QUnit.test('.before() and .after()', function(assert) {
+            $('#test-p').after('<span class="after-test">After</span>');
+            assert.equal($('#test-p').next().text(), 'After', 'after() inserts after');
+            $('.after-test').remove();
+            
+            $('#test-p').before('<span class="before-test">Before</span>');
+            assert.equal($('#test-p').prev().text(), 'Before', 'before() inserts before');
+            $('.before-test').remove();
+        });
+        
+        QUnit.test('.wrap()', function(assert) {
+            $('#test-span').wrap('<div class="wrapper"></div>');
+            assert.ok($('#test-span').parent().hasClass('wrapper'), 'wrap() wraps element');
+            $('#test-span').unwrap();
+        });
+        
+        QUnit.test('.empty()', function(assert) {
+            var clone = $('#test-list').clone();
+            clone.empty();
+            assert.equal(clone.children().length, 0, 'empty() removes children');
+        });
+        
+        QUnit.test('.remove()', function(assert) {
+            var temp = $('<div id="temp-remove">Temp</div>').appendTo('#qunit-fixture');
+            assert.equal($('#temp-remove').length, 1, 'Element exists');
+            $('#temp-remove').remove();
+            assert.equal($('#temp-remove').length, 0, 'Element removed');
+        });
+        
+        QUnit.test('.clone()', function(assert) {
+            var original = $('#test-p');
+            var clone = original.clone();
+            assert.ok(clone[0] !== original[0], 'clone() creates new element');
+            assert.equal(clone.text(), original.text(), 'clone() copies content');
+        });
+        
+        // ==========================================
+        // CSS MODULE
+        // ==========================================
+        QUnit.module('CSS');
+        
+        QUnit.test('.css() getter', function(assert) {
+            var display = $('#test-div').css('display');
+            assert.ok(display, 'Gets CSS property');
+        });
+        
+        QUnit.test('.css() setter', function(assert) {
+            $('#test-div').css('color', 'rgb(255, 0, 0)');
+            assert.equal($('#test-div').css('color'), 'rgb(255, 0, 0)', 'Sets CSS property');
+        });
+        
+        QUnit.test('.show() and .hide()', function(assert) {
+            $('#test-div').hide();
+            assert.equal($('#test-div').css('display'), 'none', 'hide() sets display none');
+            $('#test-div').show();
+            assert.notEqual($('#test-div').css('display'), 'none', 'show() removes display none');
+        });
+        
+        QUnit.test('.width() and .height()', function(assert) {
+            $('#test-div').css({ width: '100px', height: '50px' });
+            assert.equal($('#test-div').width(), 100, 'Gets width');
+            assert.equal($('#test-div').height(), 50, 'Gets height');
+        });
+        
+        QUnit.test('.offset()', function(assert) {
+            var offset = $('#test-div').offset();
+            assert.ok(typeof offset.top === 'number', 'offset has top');
+            assert.ok(typeof offset.left === 'number', 'offset has left');
+        });
+        
+        QUnit.test('.position()', function(assert) {
+            var pos = $('#test-div').position();
+            assert.ok(typeof pos.top === 'number', 'position has top');
+            assert.ok(typeof pos.left === 'number', 'position has left');
+        });
+        
+        // ==========================================
+        // EVENTS MODULE
+        // ==========================================
+        QUnit.module('Events');
+        
+        QUnit.test('.on() and .trigger()', function(assert) {
+            assert.expect(1);
+            var done = assert.async();
+            
+            $('#test-div').on('customEvent', function() {
+                assert.ok(true, 'Event handler called');
+                done();
+            });
+            $('#test-div').trigger('customEvent');
+            $('#test-div').off('customEvent');
+        });
+        
+        QUnit.test('.trigger() with data', function(assert) {
+            assert.expect(1);
+            var done = assert.async();
+            
+            $('#test-div').on('customEvent', function(e, data) {
+                assert.equal(data, 'extra data', 'Handler receives data');
+                done();
+            });
+            $('#test-div').trigger('customEvent', ['extra data']);
+            $('#test-div').off('customEvent');
+        });
+        
+        QUnit.test('.off() removes handler', function(assert) {
+            var called = false;
+            var handler = function() { called = true; };
+            
+            $('#test-div').on('testoff', handler);
+            $('#test-div').off('testoff');
+            $('#test-div').trigger('testoff');
+            
+            assert.ok(!called, 'Handler not called after off()');
+        });
+        
+        QUnit.test('.one() fires once', function(assert) {
+            assert.expect(1);
+            var done = assert.async();
+            var count = 0;
+            
+            $('#test-div').one('onetest', function() {
+                count++;
+            });
+            $('#test-div').trigger('onetest');
+            $('#test-div').trigger('onetest');
+            
+            setTimeout(function() {
+                assert.equal(count, 1, 'Handler fired only once');
+                done();
+            }, 50);
+        });
+        
+        QUnit.test('.click()', function(assert) {
+            assert.expect(1);
+            var done = assert.async();
+            
+            $('#test-div').click(function() {
+                assert.ok(true, 'Click handler called');
+                done();
+            });
+            $('#test-div').click();
+            $('#test-div').off('click');
+        });
+        
+        QUnit.test('Event delegation', function(assert) {
+            assert.expect(1);
+            var done = assert.async();
+            
+            $('#test-div').on('click', '#test-p', function() {
+                assert.ok(true, 'Delegated handler called');
+                done();
+            });
+            $('#test-p').trigger('click');
+            $('#test-div').off('click');
+        });
+        
+        QUnit.test('$.Event constructor', function(assert) {
+            var event = $.Event('click');
+            assert.equal(event.type, 'click', 'Event has type');
+            assert.ok(typeof event.preventDefault === 'function', 'Has preventDefault');
+            assert.ok(typeof event.stopPropagation === 'function', 'Has stopPropagation');
+        });
+        
+        QUnit.test('$.event.props exists', function(assert) {
+            assert.ok($.event, '$.event exists');
+            assert.ok($.event.props, '$.event.props exists');
+            assert.ok(Array.isArray($.event.props), '$.event.props is array');
+        });
+        
+        QUnit.test('$.event.special[type].add callback is invoked', function(assert) {
+            // This tests the jquery.hotkeys plugin compatibility
+            var addCalled = false;
+            var receivedHandleObj = null;
+            
+            // Set up special event handler (like jquery.hotkeys does)
+            $.event.special.testspecial = {
+                add: function(handleObj) {
+                    addCalled = true;
+                    receivedHandleObj = handleObj;
+                    // Wrap the handler like jquery.hotkeys does
+                    var origHandler = handleObj.handler;
+                    handleObj.handler = function(event) {
+                        // Only call if data matches (simulating hotkey filtering)
+                        if (handleObj.data === 'trigger') {
+                            return origHandler.apply(this, arguments);
+                        }
+                    };
+                }
+            };
+            
+            var handlerCalled = false;
+            // Use correct jQuery syntax: .on(type, selector, data, handler)
+            // null selector means no delegation, 'trigger' is data passed to handler
+            $('#test-div').on('testspecial', null, 'trigger', function() {
+                handlerCalled = true;
+            });
+            
+            assert.ok(addCalled, 'special.add callback was invoked');
+            assert.ok(receivedHandleObj, 'handleObj was passed to add callback');
+            assert.equal(receivedHandleObj.data, 'trigger', 'handleObj.data is correct');
+            
+            // Trigger the event - wrapped handler should filter based on data
+            $('#test-div').trigger('testspecial');
+            assert.ok(handlerCalled, 'Wrapped handler was called');
+            
+            // Clean up
+            $('#test-div').off('testspecial');
+            delete $.event.special.testspecial;
+        });
+        
+        // ==========================================
+        // DATA MODULE
+        // ==========================================
+        QUnit.module('Data');
+        
+        QUnit.test('.data() from attribute', function(assert) {
+            assert.equal($('#test-div').data('value'), 123, 'Reads data attribute (converted to number)');
+        });
+        
+        QUnit.test('.data() parses JSON', function(assert) {
+            var json = $('#test-div').data('json');
+            assert.deepEqual(json, { key: 'value' }, 'Parses JSON data attribute');
+        });
+        
+        QUnit.test('.data() set and get', function(assert) {
+            $('#test-div').data('custom', 'myvalue');
+            assert.equal($('#test-div').data('custom'), 'myvalue', 'Sets and gets data');
+        });
+        
+        QUnit.test('.removeData()', function(assert) {
+            $('#test-div').data('toremove', 'value');
+            assert.equal($('#test-div').data('toremove'), 'value', 'Data exists');
+            $('#test-div').removeData('toremove');
+            assert.equal($('#test-div').data('toremove'), undefined, 'Data removed');
+        });
+        
+        QUnit.test('$.data() and $._data()', function(assert) {
+            assert.ok(typeof $.data === 'function', '$.data exists');
+            assert.ok(typeof $._data === 'function', '$._data exists');
+            assert.ok(typeof $._removeData === 'function', '$._removeData exists');
+        });
+        
+        QUnit.test('$.hasData()', function(assert) {
+            var elem = document.createElement('div');
+            assert.ok(!$.hasData(elem), 'No data initially');
+            $.data(elem, 'test', 'value');
+            assert.ok($.hasData(elem), 'Has data after setting');
+        });
+        
+        // ==========================================
+        // SERIALIZE MODULE
+        // ==========================================
+        QUnit.module('Serialize');
+        
+        QUnit.test('.serialize()', function(assert) {
+            var serialized = $('#test-form').serialize();
+            assert.ok(serialized.indexOf('field1=value1') >= 0, 'Contains field1');
+            assert.ok(serialized.indexOf('field2=value2') >= 0, 'Contains field2');
+        });
+        
+        QUnit.test('.serializeArray()', function(assert) {
+            var arr = $('#test-form').serializeArray();
+            assert.ok(Array.isArray(arr), 'Returns array');
+            assert.ok(arr.length >= 2, 'Has multiple entries');
+            assert.ok(arr[0].name && arr[0].value !== undefined, 'Has name/value pairs');
+        });
+        
+        // ==========================================
+        // DEFERRED MODULE
+        // ==========================================
+        QUnit.module('Deferred');
+        
+        QUnit.test('$.Deferred()', function(assert) {
+            assert.expect(2);
+            var done = assert.async();
+            
+            var dfd = $.Deferred();
+            dfd.promise().done(function(val) {
+                assert.equal(val, 'success', 'Done callback receives value');
+                done();
+            });
+            
+            assert.ok(typeof dfd.resolve === 'function', 'Has resolve method');
+            dfd.resolve('success');
+        });
+        
+        QUnit.test('$.Deferred() fail', function(assert) {
+            assert.expect(1);
+            var done = assert.async();
+            
+            var dfd = $.Deferred();
+            dfd.fail(function(val) {
+                assert.equal(val, 'error', 'Fail callback receives value');
+                done();
+            });
+            dfd.reject('error');
+        });
+        
+        QUnit.test('$.when()', function(assert) {
+            assert.expect(1);
+            var done = assert.async();
+            
+            $.when($.Deferred().resolve(1), $.Deferred().resolve(2)).done(function(a, b) {
+                assert.ok(true, '$.when resolves when all deferreds resolve');
+                done();
+            });
+        });
+        
+        // ==========================================
+        // UTILITIES MODULE
+        // ==========================================
+        QUnit.module('Utilities');
+        
+        QUnit.test('$.each() with array', function(assert) {
+            var sum = 0;
+            $.each([1, 2, 3], function(i, val) {
+                sum += val;
+            });
+            assert.equal(sum, 6, 'Iterates over array');
+        });
+        
+        QUnit.test('$.each() with object', function(assert) {
+            var keys = [];
+            $.each({ a: 1, b: 2 }, function(key) {
+                keys.push(key);
+            });
+            assert.deepEqual(keys.sort(), ['a', 'b'], 'Iterates over object');
+        });
+        
+        QUnit.test('$.map()', function(assert) {
+            var result = $.map([1, 2, 3], function(val) {
+                return val * 2;
+            });
+            assert.deepEqual(result, [2, 4, 6], 'Maps array');
+        });
+        
+        QUnit.test('$.grep()', function(assert) {
+            var result = $.grep([1, 2, 3, 4], function(val) {
+                return val > 2;
+            });
+            assert.deepEqual(result, [3, 4], 'Filters array');
+        });
+        
+        QUnit.test('$.inArray()', function(assert) {
+            assert.equal($.inArray(2, [1, 2, 3]), 1, 'Finds index');
+            assert.equal($.inArray(5, [1, 2, 3]), -1, 'Returns -1 for not found');
+        });
+        
+        QUnit.test('$.merge()', function(assert) {
+            var result = $.merge([1, 2], [3, 4]);
+            assert.deepEqual(result, [1, 2, 3, 4], 'Merges arrays');
+        });
+        
+        QUnit.test('$.makeArray()', function(assert) {
+            var nodeList = document.querySelectorAll('div');
+            var arr = $.makeArray(nodeList);
+            assert.ok(Array.isArray(arr), 'Converts to array');
+        });
+        
+        QUnit.test('$.proxy()', function(assert) {
+            var obj = { name: 'test' };
+            var fn = $.proxy(function() { return this.name; }, obj);
+            assert.equal(fn(), 'test', 'Binds context');
+        });
+        
+        QUnit.test('$.noop()', function(assert) {
+            assert.ok(typeof $.noop === 'function', '$.noop exists');
+            assert.equal($.noop(), undefined, '$.noop returns undefined');
+        });
+        
+        QUnit.test('$.now()', function(assert) {
+            assert.ok(typeof $.now() === 'number', '$.now returns number');
+        });
+        
+        QUnit.test('$.contains()', function(assert) {
+            assert.ok($.contains(document, document.body), 'Document contains body');
+            assert.ok(!$.contains(document.body, document), 'Body does not contain document');
+        });
+        
+        // ==========================================
+        // CALLBACKS MODULE
+        // ==========================================
+        QUnit.module('Callbacks');
+        
+        QUnit.test('$.Callbacks()', function(assert) {
+            var cb = $.Callbacks();
+            var result = 0;
+            cb.add(function() { result += 1; });
+            cb.add(function() { result += 2; });
+            cb.fire();
+            assert.equal(result, 3, 'Callbacks fire in order');
+        });
+        
+        QUnit.test('$.Callbacks() remove', function(assert) {
+            var cb = $.Callbacks();
+            var result = 0;
+            var fn = function() { result += 1; };
+            cb.add(fn);
+            cb.remove(fn);
+            cb.fire();
+            assert.equal(result, 0, 'Removed callback not fired');
+        });
+        
+        // ==========================================
+        // EFFECTS/QUEUE MODULE
+        // ==========================================
+        QUnit.module('Effects/Queue');
+        
+        QUnit.test('$.queue() and $.dequeue()', function(assert) {
+            assert.ok(typeof $.queue === 'function', '$.queue exists');
+            assert.ok(typeof $.dequeue === 'function', '$.dequeue exists');
+        });
+        
+        QUnit.test('.queue() and .dequeue()', function(assert) {
+            assert.ok(typeof $('#test-div').queue === 'function', '.queue() exists');
+            assert.ok(typeof $('#test-div').dequeue === 'function', '.dequeue() exists');
+        });
+        
+        QUnit.test('$.fx.off', function(assert) {
+            assert.ok(typeof $.fx !== 'undefined', '$.fx exists');
+            // $.fx.off is a boolean property that may not be defined until first access
+            // Just verify $.fx is accessible and has expected structure
+            assert.ok(typeof $.fx.off === 'boolean' || typeof $.fx.off === 'undefined', '$.fx.off is boolean or undefined');
+        });
+        
+        QUnit.test('$.easing', function(assert) {
+            assert.ok($.easing, '$.easing exists');
+            assert.ok($.easing.linear, '$.easing.linear exists');
+            assert.ok($.easing.swing, '$.easing.swing exists');
+        });
+        
+        // ==========================================
+        // jQuery UI COMPATIBILITY
+        // ==========================================
+        QUnit.module('jQuery UI Compatibility');
+        
+        QUnit.test('$.cssHooks', function(assert) {
+            assert.ok($.cssHooks, '$.cssHooks exists');
+        });
+        
+        QUnit.test('$.cssNumber', function(assert) {
+            assert.ok($.cssNumber, '$.cssNumber exists');
+            assert.ok($.cssNumber.zIndex, 'zIndex is unitless');
+        });
+        
+        QUnit.test('$.support', function(assert) {
+            assert.ok($.support, '$.support exists');
+        });
+        
+        // ==========================================
+        // EXPRESSION/SELECTOR ENGINE
+        // ==========================================
+        QUnit.module('Expression/Selector Engine');
+        
+        QUnit.test('$.expr exists', function(assert) {
+            assert.ok($.expr, '$.expr exists');
+            assert.ok($.expr.pseudos, '$.expr.pseudos exists');
+            assert.ok($.expr[':'], '$.expr[":"] exists');
+        });
+        
+        QUnit.test('$.find exists', function(assert) {
+            assert.ok(typeof $.find === 'function', '$.find is a function');
+            assert.ok(typeof $.find.matchesSelector === 'function', '$.find.matchesSelector exists');
+            assert.ok(typeof $.find.matches === 'function', '$.find.matches exists');
+        });
+        
+        QUnit.test('Custom pseudo selector', function(assert) {
+            // Add custom pseudo
+            $.expr[':'].customPseudo = function(elem) {
+                return elem.id === 'test-div';
+            };
+            
+            var result = $(':customPseudo');
+            assert.ok(result.length >= 1, 'Custom pseudo selector works');
+            
+            delete $.expr[':'].customPseudo;
+        });
+        
+        // ==========================================
+        // FORM ELEMENTS MODULE
+        // ==========================================
+        QUnit.module('Form Elements');
+        
+        // Val() tests
+        QUnit.test('.val() text input getter', function(assert) {
+            assert.equal($('#text-input').val(), 'initial text', 'Gets text input value');
+        });
+        
+        QUnit.test('.val() text input setter', function(assert) {
+            $('#text-input').val('new text');
+            assert.equal($('#text-input').val(), 'new text', 'Sets text input value');
+            $('#text-input').val('initial text'); // Reset
+        });
+        
+        QUnit.test('.val() password input', function(assert) {
+            assert.equal($('#password-input').val(), 'secret', 'Gets password input value');
+            $('#password-input').val('newsecret');
+            assert.equal($('#password-input').val(), 'newsecret', 'Sets password input value');
+            $('#password-input').val('secret'); // Reset
+        });
+        
+        QUnit.test('.val() textarea', function(assert) {
+            assert.equal($('#textarea-input').val(), 'initial textarea', 'Gets textarea value');
+            $('#textarea-input').val('new textarea content');
+            assert.equal($('#textarea-input').val(), 'new textarea content', 'Sets textarea value');
+            $('#textarea-input').val('initial textarea'); // Reset
+        });
+        
+        QUnit.test('.val() hidden input', function(assert) {
+            assert.equal($('#hidden-input').val(), 'hidden-val', 'Gets hidden input value');
+            $('#hidden-input').val('new-hidden');
+            assert.equal($('#hidden-input').val(), 'new-hidden', 'Sets hidden input value');
+            $('#hidden-input').val('hidden-val'); // Reset
+        });
+        
+        QUnit.test('.val() single select', function(assert) {
+            assert.equal($('#single-select').val(), 's2', 'Gets selected option value');
+            $('#single-select').val('s3');
+            assert.equal($('#single-select').val(), 's3', 'Sets selected option');
+            $('#single-select').val('s2'); // Reset
+        });
+        
+        QUnit.test('.val() multi-select', function(assert) {
+            var vals = $('#multi-select').val();
+            assert.ok(Array.isArray(vals), 'Multi-select returns array');
+            assert.deepEqual(vals.sort(), ['m1', 'm3'], 'Gets multi-select values');
+            
+            $('#multi-select').val(['m2', 'm3']);
+            vals = $('#multi-select').val();
+            assert.deepEqual(vals.sort(), ['m2', 'm3'], 'Sets multi-select values');
+            
+            // Reset
+            $('#multi-select').val(['m1', 'm3']);
+        });
+        
+        QUnit.test('.val() checkbox', function(assert) {
+            assert.equal($('#checkbox1').val(), 'cb1', 'Gets checkbox value');
+            assert.equal($('#checkbox2').val(), 'cb2', 'Gets unchecked checkbox value');
+        });
+        
+        QUnit.test('.val() radio button', function(assert) {
+            assert.equal($('#radio1').val(), 'r1', 'Gets radio button value');
+            assert.equal($('#radio2').val(), 'r2', 'Gets other radio value');
+        });
+        
+        QUnit.test('.val() with null clears value', function(assert) {
+            $('#text-input').val('something');
+            $('#text-input').val(null);
+            assert.equal($('#text-input').val(), '', 'Null clears to empty string');
+            $('#text-input').val('initial text'); // Reset
+        });
+        
+        // Prop() tests
+        QUnit.test('.prop() disabled', function(assert) {
+            assert.equal($('#disabled-input').prop('disabled'), true, 'Gets disabled property');
+            $('#text-input').prop('disabled', true);
+            assert.equal($('#text-input').prop('disabled'), true, 'Sets disabled property');
+            $('#text-input').prop('disabled', false);
+            assert.equal($('#text-input').prop('disabled'), false, 'Unsets disabled property');
+        });
+        
+        QUnit.test('.prop() readonly', function(assert) {
+            assert.equal($('#readonly-input').prop('readOnly'), true, 'Gets readonly property');
+            $('#text-input').prop('readOnly', true);
+            assert.equal($('#text-input').prop('readOnly'), true, 'Sets readonly property');
+            $('#text-input').prop('readOnly', false);
+        });
+        
+        QUnit.test('.prop() checked', function(assert) {
+            assert.equal($('#checkbox1').prop('checked'), true, 'Gets checked property (checked)');
+            assert.equal($('#checkbox2').prop('checked'), false, 'Gets checked property (unchecked)');
+            
+            $('#checkbox2').prop('checked', true);
+            assert.equal($('#checkbox2').prop('checked'), true, 'Sets checked property');
+            $('#checkbox2').prop('checked', false); // Reset
+        });
+        
+        QUnit.test('.prop() selectedIndex', function(assert) {
+            assert.equal($('#single-select').prop('selectedIndex'), 1, 'Gets selectedIndex');
+            $('#single-select').prop('selectedIndex', 0);
+            assert.equal($('#single-select').prop('selectedIndex'), 0, 'Sets selectedIndex');
+            $('#single-select').prop('selectedIndex', 1); // Reset
+        });
+        
+        // Focus/Blur tests
+        QUnit.test('.focus() triggers focus', function(assert) {
+            var done = assert.async();
+            var focused = false;
+            
+            $('#focus-input-1').on('focus', function() {
+                focused = true;
+            });
+            
+            $('#focus-input-1').focus();
+            
+            setTimeout(function() {
+                assert.ok(focused || document.activeElement === $('#focus-input-1')[0],
+                    '.focus() triggers focus event or focuses element');
+                $('#focus-input-1').off('focus');
+                done();
+            }, 50);
+        });
+        
+        QUnit.test('.blur() triggers blur', function(assert) {
+            var done = assert.async();
+            var blurred = false;
+            
+            $('#focus-input-1').on('blur', function() {
+                blurred = true;
+            });
+            
+            // First focus, then blur
+            $('#focus-input-1')[0].focus();
+            $('#focus-input-1').blur();
+            
+            setTimeout(function() {
+                assert.ok(blurred || document.activeElement !== $('#focus-input-1')[0],
+                    '.blur() triggers blur event or removes focus');
+                $('#focus-input-1').off('blur');
+                done();
+            }, 50);
+        });
+        
+        QUnit.test('focusin event bubbles', function(assert) {
+            var done = assert.async();
+            var bubbled = false;
+            
+            $('#focus-test-container').on('focusin', function() {
+                bubbled = true;
+            });
+            
+            $('#focus-input-2')[0].focus();
+            
+            setTimeout(function() {
+                assert.ok(bubbled, 'focusin event bubbles to parent');
+                $('#focus-test-container').off('focusin');
+                done();
+            }, 50);
+        });
+        
+        QUnit.test('focusout event bubbles', function(assert) {
+            var done = assert.async();
+            var bubbled = false;
+            
+            $('#focus-test-container').on('focusout', function() {
+                bubbled = true;
+            });
+            
+            $('#focus-input-2')[0].focus();
+            $('#focus-input-2')[0].blur();
+            
+            setTimeout(function() {
+                assert.ok(bubbled, 'focusout event bubbles to parent');
+                $('#focus-test-container').off('focusout');
+                done();
+            }, 50);
+        });
+        
+        // Change event
+        QUnit.test('.change() binds and triggers', function(assert) {
+            var done = assert.async();
+            var changed = false;
+            
+            $('#text-input').change(function() {
+                changed = true;
+            });
+            
+            $('#text-input').val('changed value').trigger('change');
+            
+            setTimeout(function() {
+                assert.ok(changed, 'change event fires');
+                $('#text-input').off('change');
+                $('#text-input').val('initial text'); // Reset
+                done();
+            }, 50);
+        });
+        
+        // Key events
+        QUnit.test('.keydown() event', function(assert) {
+            var done = assert.async();
+            var keyDowned = false;
+            var keyCode = null;
+            
+            $('#text-input').keydown(function(e) {
+                keyDowned = true;
+                keyCode = e.which || e.keyCode;
+            });
+            
+            // Trigger keydown
+            $('#text-input').trigger({ type: 'keydown', which: 65 }); // 'a' key
+            
+            setTimeout(function() {
+                assert.ok(keyDowned, 'keydown event fires');
+                $('#text-input').off('keydown');
+                done();
+            }, 50);
+        });
+        
+        QUnit.test('.keyup() event', function(assert) {
+            var done = assert.async();
+            var keyUpped = false;
+            
+            $('#text-input').keyup(function() {
+                keyUpped = true;
+            });
+            
+            $('#text-input').trigger('keyup');
+            
+            setTimeout(function() {
+                assert.ok(keyUpped, 'keyup event fires');
+                $('#text-input').off('keyup');
+                done();
+            }, 50);
+        });
+        
+        QUnit.test('.keypress() event', function(assert) {
+            var done = assert.async();
+            var keyPressed = false;
+            
+            $('#text-input').keypress(function() {
+                keyPressed = true;
+            });
+            
+            $('#text-input').trigger('keypress');
+            
+            setTimeout(function() {
+                assert.ok(keyPressed, 'keypress event fires');
+                $('#text-input').off('keypress');
+                done();
+            }, 50);
+        });
+        
+        // Submit event
+        QUnit.test('.submit() binds handler', function(assert) {
+            var done = assert.async();
+            var submitted = false;
+            
+            $('#form-tests').submit(function(e) {
+                submitted = true;
+                e.preventDefault();
+            });
+            
+            $('#form-tests').trigger('submit');
+            
+            setTimeout(function() {
+                assert.ok(submitted, 'submit event fires');
+                $('#form-tests').off('submit');
+                done();
+            }, 50);
+        });
+        
+        // Select event
+        QUnit.test('.select() event on input', function(assert) {
+            var done = assert.async();
+            var selected = false;
+            
+            $('#text-input').select(function() {
+                selected = true;
+            });
+            
+            $('#text-input').trigger('select');
+            
+            setTimeout(function() {
+                assert.ok(selected, 'select event fires');
+                $('#text-input').off('select');
+                done();
+            }, 50);
+        });
+        
+        // is(':disabled') and is(':enabled')
+        QUnit.test(':disabled pseudo selector', function(assert) {
+            assert.ok($('#disabled-input').is(':disabled'), 'Disabled input matches :disabled');
+            assert.ok(!$('#text-input').is(':disabled'), 'Enabled input does not match :disabled');
+        });
+        
+        QUnit.test(':enabled pseudo selector', function(assert) {
+            assert.ok($('#text-input').is(':enabled'), 'Enabled input matches :enabled');
+            assert.ok(!$('#disabled-input').is(':enabled'), 'Disabled input does not match :enabled');
+        });
+        
+        QUnit.test(':checked pseudo selector', function(assert) {
+            assert.ok($('#checkbox1').is(':checked'), 'Checked checkbox matches :checked');
+            assert.ok(!$('#checkbox2').is(':checked'), 'Unchecked checkbox does not match :checked');
+        });
+        
+        QUnit.test(':selected pseudo selector', function(assert) {
+            var selected = $('#single-select option:selected');
+            assert.equal(selected.val(), 's2', ':selected finds selected option');
+        });
+        
+        // Form serialization
+        QUnit.test('.serialize() includes all form fields', function(assert) {
+            var serialized = $('#form-tests').serialize();
+            assert.ok(serialized.indexOf('text-input=') >= 0, 'Contains text input');
+            assert.ok(serialized.indexOf('hidden-input=') >= 0, 'Contains hidden input');
+            assert.ok(serialized.indexOf('textarea-input=') >= 0, 'Contains textarea');
+            assert.ok(serialized.indexOf('single-select=') >= 0, 'Contains select');
+        });
+        
+        QUnit.test('.serializeArray() returns proper structure', function(assert) {
+            var arr = $('#form-tests').serializeArray();
+            assert.ok(Array.isArray(arr), 'Returns array');
+            
+            var textField = arr.find(function(item) { return item.name === 'text-input'; });
+            assert.ok(textField, 'Has text input');
+            assert.equal(textField.value, 'initial text', 'Has correct value');
+        });
+        
+        // Bootstrap button pattern test
+        QUnit.test('Bootstrap button state pattern works', function(assert) {
+            var $btn = $('#test-button');
+            var isInput = $btn.is('input');
+            var val = isInput ? 'val' : 'html';
+            var originalText = $btn[val]();
+            var loadingText = $btn.data('loading-text') || 'loading...';
+            
+            // Simulate button state change (like Bootstrap does)
+            $btn.data('resetText', $btn[val]());
+            $btn[val](loadingText);
+            $btn.addClass('disabled').attr('disabled', 'disabled');
+            
+            assert.equal($btn[val](), loadingText, 'Button shows loading text');
+            assert.ok($btn.hasClass('disabled'), 'Button has disabled class');
+            assert.equal($btn.prop('disabled'), true, 'Button is disabled');
+            
+            // Reset
+            $btn[val]($btn.data('resetText'));
+            $btn.removeClass('disabled').removeAttr('disabled');
+            
+            assert.equal($btn[val](), originalText, 'Button text restored');
+            assert.ok(!$btn.hasClass('disabled'), 'Disabled class removed');
+        });
+        
+        // :input pseudo selector
+        QUnit.test(':input finds all form elements', function(assert) {
+            var inputs = $('#form-tests :input');
+            assert.ok(inputs.length >= 10, ':input finds multiple form elements');
+            
+            // Check that it finds different types
+            var types = {};
+            inputs.each(function() {
+                var tag = this.tagName.toLowerCase();
+                types[tag] = true;
+            });
+            
+            assert.ok(types['input'], ':input finds input elements');
+            assert.ok(types['textarea'], ':input finds textarea elements');
+            assert.ok(types['select'], ':input finds select elements');
+            assert.ok(types['button'], ':input finds button elements');
+        });
+        
+        // :text pseudo selector
+        QUnit.test(':text finds text inputs', function(assert) {
+            var textInputs = $('#form-tests :text');
+            assert.ok(textInputs.length >= 3, ':text finds text input elements');
+        });
+        
+        // :checkbox pseudo selector
+        QUnit.test(':checkbox finds checkboxes', function(assert) {
+            var checkboxes = $('#form-tests :checkbox');
+            assert.equal(checkboxes.length, 2, ':checkbox finds checkbox elements');
+        });
+        
+        // :radio pseudo selector
+        QUnit.test(':radio finds radio buttons', function(assert) {
+            var radios = $('#form-tests :radio');
+            assert.equal(radios.length, 3, ':radio finds radio elements');
+        });
+        
+        // :password pseudo selector
+        QUnit.test(':password finds password inputs', function(assert) {
+            var passwords = $('#form-tests :password');
+            assert.equal(passwords.length, 1, ':password finds password element');
+        });
+        
+        // :hidden pseudo selector (for hidden inputs)
+        QUnit.test(':hidden finds hidden inputs', function(assert) {
+            var hidden = $('#form-tests input:hidden');
+            assert.ok(hidden.length >= 1, ':hidden finds hidden input elements');
+        });
+        
+        // Event object properties
+        QUnit.test('Event object has expected properties', function(assert) {
+            var done = assert.async();
+            var eventObj = null;
+            
+            $('#text-input').on('keydown', function(e) {
+                eventObj = e;
+            });
+            
+            var testEvent = $.Event('keydown', { which: 65, keyCode: 65 });
+            $('#text-input').trigger(testEvent);
+            
+            setTimeout(function() {
+                assert.ok(eventObj, 'Event object received');
+                if (eventObj) {
+                    assert.ok(typeof eventObj.preventDefault === 'function', 'Has preventDefault');
+                    assert.ok(typeof eventObj.stopPropagation === 'function', 'Has stopPropagation');
+                    assert.ok(typeof eventObj.isDefaultPrevented === 'function', 'Has isDefaultPrevented');
+                    assert.equal(eventObj.type, 'keydown', 'Has type property');
+                    assert.ok(eventObj.target, 'Has target property');
+                }
+                $('#text-input').off('keydown');
+                done();
+            }, 50);
+        });
+        
+        // Test that form elements are interactable
+        QUnit.test('Form elements accept input programmatically', function(assert) {
+            // This simulates what would happen when user types
+            var $input = $('#text-input');
+            
+            // Clear and set value
+            $input.val('');
+            assert.equal($input.val(), '', 'Input cleared');
+            
+            $input.val('typed value');
+            assert.equal($input.val(), 'typed value', 'Input accepts programmatic value');
+            
+            // Reset
+            $input.val('initial text');
+        });
+        
+        // Test $.camelCase (used by Bootstrap for CSS property conversion)
+        QUnit.test('$.camelCase converts property names', function(assert) {
+            assert.equal($.camelCase('font-size'), 'fontSize', 'Converts font-size');
+            assert.equal($.camelCase('background-color'), 'backgroundColor', 'Converts background-color');
+            assert.equal($.camelCase('border-top-width'), 'borderTopWidth', 'Converts border-top-width');
+        });
+        
+        // Test $.isWindow (used by scroll functions)
+        QUnit.test('$.isWindow detects window object', function(assert) {
+            assert.ok($.isWindow(window), 'window is window');
+            assert.ok(!$.isWindow(document), 'document is not window');
+            assert.ok(!$.isWindow(document.body), 'body is not window');
+            assert.ok(!$.isWindow({}), 'plain object is not window');
+        });
+
 QUnit.module('Plugin Compatibility - Dimensions');
 
         QUnit.test('innerWidth/innerHeight', function(assert) {
@@ -1521,4 +2822,727 @@ QUnit.module('Plugin Compatibility - Dimensions');
             assert.ok(!deleteCalled, 'Delete handler did NOT fire');
 
             $parent.remove();
+        });
+
+        QUnit.module('Plugin Compatibility - Keyboard Events');
+
+        QUnit.test('keypress event e.which contains charCode for character keys', function(assert) {
+            // This test verifies behavior needed for preside.hotkeys.js
+            // When pressing backtick (`), e.which should be 96 (the charCode)
+            var $input = $('<input type="text">').appendTo('#qunit-fixture');
+            var receivedWhich = null;
+            var receivedCharCode = null;
+
+            $input.on('keypress', function(e) {
+                receivedWhich = e.which;
+                receivedCharCode = e.charCode;
+            });
+
+            // Create and dispatch a native keypress event for backtick
+            var keypressEvent = new KeyboardEvent('keypress', {
+                bubbles: true,
+                cancelable: true,
+                charCode: 96,  // backtick character code
+                keyCode: 96,
+                which: 96,
+                key: '`'
+            });
+
+            $input[0].dispatchEvent(keypressEvent);
+
+            assert.equal(receivedWhich, 96, 'e.which is 96 for backtick keypress');
+            assert.equal(receivedCharCode, 96, 'e.charCode is 96 for backtick keypress');
+
+            $input.remove();
+        });
+
+        QUnit.test('keydown event e.which contains keyCode', function(assert) {
+            // keydown uses keyCode, not charCode
+            var $input = $('<input type="text">').appendTo('#qunit-fixture');
+            var receivedWhich = null;
+
+            $input.on('keydown', function(e) {
+                receivedWhich = e.which;
+            });
+
+            // Create and dispatch a native keydown event
+            var keydownEvent = new KeyboardEvent('keydown', {
+                bubbles: true,
+                cancelable: true,
+                keyCode: 65,  // 'A' key
+                which: 65,
+                key: 'a'
+            });
+
+            $input[0].dispatchEvent(keydownEvent);
+
+            assert.equal(receivedWhich, 65, 'e.which is keyCode for keydown');
+
+            $input.remove();
+        });
+
+        QUnit.module('Plugin Compatibility - Selector Handling');
+
+        QUnit.test('HTML strings are detected and parsed correctly', function(assert) {
+            // Standard HTML tag
+            var $div = $('<div>content</div>');
+            assert.equal($div.length, 1, '$("<div>content</div>") creates element');
+            assert.equal($div[0].tagName, 'DIV', 'Created element is a DIV');
+            
+            // HTML with leading whitespace
+            var $whitespace = $('   <span>text</span>');
+            assert.equal($whitespace.length, 1, 'HTML with leading whitespace is detected');
+            assert.equal($whitespace[0].tagName, 'SPAN', 'Created element is a SPAN');
+            
+            // Self-closing tag
+            var $selfClose = $('<br/>');
+            assert.equal($selfClose.length, 1, '$("<br/>") creates element');
+            
+            // Complex HTML
+            var $complex = $('<div class="test"><span>inner</span></div>');
+            assert.equal($complex.length, 1, 'Complex HTML creates element');
+            assert.equal($complex.find('span').length, 1, 'Inner elements are created');
+        });
+
+        QUnit.test('Selector strings are not treated as HTML', function(assert) {
+            // Create test elements
+            var $fixture = $('#qunit-fixture');
+            $fixture.append('<div class="test-selector">Test</div>');
+            
+            // Regular selector should find elements
+            var $found = $('.test-selector');
+            assert.equal($found.length, 1, '.test-selector finds element');
+            
+            // Selector with angle brackets in attribute should not be treated as HTML
+            // (though this is an edge case - attributes with < are rare)
+            $fixture.append('<div data-config="a<b">Config</div>');
+            var $config = $('[data-config]');
+            assert.equal($config.length, 1, 'Attribute selector works');
+        });
+
+        QUnit.test('Empty and null selectors return empty collection', function(assert) {
+            var $empty1 = $('');
+            assert.equal($empty1.length, 0, '$("") returns empty collection');
+            
+            var $empty2 = $(null);
+            assert.equal($empty2.length, 0, '$(null) returns empty collection');
+            
+            var $empty3 = $(undefined);
+            assert.equal($empty3.length, 0, '$(undefined) returns empty collection');
+            
+            var $empty4 = $();
+            assert.equal($empty4.length, 0, '$() returns empty collection');
+        });
+
+        QUnit.module('Plugin Compatibility - $.extend() Single Argument');
+
+        QUnit.test('$.extend(obj) extends jQuery itself', function(assert) {
+            // This pattern is used by jQuery Terminal and other plugins
+            // to add static methods/properties to $ (e.g., $.Storage)
+            
+            // Store any existing $.testStaticProp to restore later
+            var originalProp = $.testStaticProp;
+            
+            // Extend $ with a single object
+            $.extend({
+                testStaticProp: 'testValue',
+                testStaticMethod: function() {
+                    return 'hello';
+                }
+            });
+            
+            assert.equal($.testStaticProp, 'testValue', '$.extend({prop}) adds property to $');
+            assert.equal(typeof $.testStaticMethod, 'function', '$.extend({method}) adds method to $');
+            assert.equal($.testStaticMethod(), 'hello', 'Static method works correctly');
+            
+            // Clean up
+            delete $.testStaticProp;
+            delete $.testStaticMethod;
+            if (originalProp !== undefined) {
+                $.testStaticProp = originalProp;
+            }
+        });
+
+        QUnit.test('$.extend() normal usage still works', function(assert) {
+            // Test that normal $.extend() usage is not broken
+            
+            // Deep extend with boolean first arg
+            var target = { a: { x: 1 } };
+            var source = { a: { y: 2 }, b: 3 };
+            var result = $.extend(true, target, source);
+            
+            assert.deepEqual(result.a, { x: 1, y: 2 }, 'Deep extend merges nested objects');
+            assert.equal(result.b, 3, 'Deep extend copies simple properties');
+            
+            // Shallow extend
+            var target2 = { a: 1 };
+            var source2 = { b: 2 };
+            var result2 = $.extend(target2, source2);
+            
+            assert.equal(result2.a, 1, 'Shallow extend preserves target properties');
+            assert.equal(result2.b, 2, 'Shallow extend copies source properties');
+            
+            // Extend into empty object (common pattern)
+            var result3 = $.extend({}, { foo: 'bar' });
+            assert.equal(result3.foo, 'bar', 'Extend into empty object works');
+        });
+
+        QUnit.module('Plugin Compatibility - Animation Effects');
+
+        QUnit.test('slideToggle works across multiple cycles', function(assert) {
+            var done = assert.async();
+            var $el = $('<div style="height: 100px; background: red;">Content</div>').appendTo('#qunit-fixture');
+            var cycleCount = 0;
+            
+            function runCycle() {
+                cycleCount++;
+                var wasHidden = $el.is(':hidden');
+                
+                $el.slideToggle(50, function() {
+                    var isNowHidden = $el.is(':hidden');
+                    
+                    // Verify state changed
+                    assert.notEqual(wasHidden, isNowHidden,
+                        'Cycle ' + cycleCount + ': visibility changed after slideToggle');
+                    
+                    if (cycleCount < 4) {
+                        // Run another cycle
+                        setTimeout(runCycle, 20);
+                    } else {
+                        // All cycles complete
+                        assert.ok(true, 'slideToggle completed 4 cycles successfully');
+                        $el.remove();
+                        done();
+                    }
+                });
+            }
+            
+            // Start first cycle
+            runCycle();
+        });
+
+        QUnit.test('slideUp/slideDown work across multiple cycles', function(assert) {
+            var done = assert.async();
+            var $el = $('<div style="height: 100px; background: blue;">Content</div>').appendTo('#qunit-fixture');
+            
+            // Start visible, slide up
+            $el.slideUp(50, function() {
+                assert.ok($el.is(':hidden'), 'First slideUp hides element');
+                
+                // Slide down
+                $el.slideDown(50, function() {
+                    assert.ok($el.is(':visible'), 'First slideDown shows element');
+                    
+                    // Slide up again
+                    $el.slideUp(50, function() {
+                        assert.ok($el.is(':hidden'), 'Second slideUp hides element');
+                        
+                        // Slide down again
+                        $el.slideDown(50, function() {
+                            assert.ok($el.is(':visible'), 'Second slideDown shows element');
+                            $el.remove();
+                            done();
+                        });
+                    });
+                });
+            });
+        });
+
+        QUnit.test('fadeToggle works across multiple cycles', function(assert) {
+            var done = assert.async();
+            var $el = $('<div style="opacity: 1; background: green;">Content</div>').appendTo('#qunit-fixture');
+            var cycleCount = 0;
+            
+            function runCycle() {
+                cycleCount++;
+                var wasHidden = $el.is(':hidden') || $el.css('opacity') === '0';
+                
+                $el.fadeToggle(50, function() {
+                    var isNowHidden = $el.is(':hidden') || $el.css('opacity') === '0';
+                    
+                    // Verify state changed
+                    assert.notEqual(wasHidden, isNowHidden,
+                        'Cycle ' + cycleCount + ': visibility changed after fadeToggle');
+                    
+                    if (cycleCount < 4) {
+                        setTimeout(runCycle, 20);
+                    } else {
+                        assert.ok(true, 'fadeToggle completed 4 cycles successfully');
+                        $el.remove();
+                        done();
+                    }
+                });
+            }
+            
+            runCycle();
+        });
+
+        QUnit.test('Animation callback receives correct context', function(assert) {
+            var done = assert.async();
+            var $el = $('<div style="height: 100px;">Content</div>').appendTo('#qunit-fixture');
+            var callbackContext = null;
+            
+            $el.slideUp(50, function() {
+                callbackContext = this;
+                assert.equal(callbackContext, $el[0], 'Callback this is the DOM element');
+                $el.remove();
+                done();
+            });
+        });
+
+        QUnit.module('Collection/Traversal Edge Cases');
+
+        QUnit.test('$.fn.end() chain behavior', function(assert) {
+            var $container = $('<div><p>1</p><p>2</p><p>3</p></div>').appendTo('#qunit-fixture');
+            
+            var $result = $container.find('p').eq(0).end();
+            
+            assert.equal($result.length, 3, 'end() returns to previous collection');
+            assert.ok($result[0].tagName === 'P', 'Collection contains correct elements');
+            
+            // Double end()
+            var $result2 = $container.find('p').eq(0).end().end();
+            assert.equal($result2[0], $container[0], 'Double end() returns to original');
+            
+            $container.remove();
+        });
+
+        QUnit.test('$.fn.addBack() with filter', function(assert) {
+            var $container = $('<div class="wrapper"><p class="a">A</p><span class="b">B</span></div>').appendTo('#qunit-fixture');
+            
+            var $result = $container.find('p').next().addBack('.a');
+            
+            assert.equal($result.length, 2, 'addBack with filter works');
+            assert.ok($result.eq(0).hasClass('a'), 'Filtered previous element included');
+            assert.ok($result.eq(1).hasClass('b'), 'Current element included');
+            
+            $container.remove();
+        });
+
+        QUnit.test('$.fn.slice() negative indices', function(assert) {
+            var $divs = $('<div>1</div><div>2</div><div>3</div><div>4</div>').appendTo('#qunit-fixture');
+            
+            var $result = $divs.slice(-2);
+            assert.equal($result.length, 2, 'Negative start works');
+            assert.equal($result.eq(0).text(), '3', 'Correct elements');
+            
+            var $result2 = $divs.slice(1, -1);
+            assert.equal($result2.length, 2, 'Negative end works');
+            assert.equal($result2.eq(0).text(), '2', 'Correct range');
+            assert.equal($result2.eq(1).text(), '3', 'Correct range');
+            
+            $divs.remove();
+        });
+
+        QUnit.test('$.fn.has() with element', function(assert) {
+            var $container = $('<div><p><span>A</span></p><p>B</p></div>').appendTo('#qunit-fixture');
+            
+            var $withSpan = $container.find('p').has('span');
+            assert.equal($withSpan.length, 1, 'has() filters by descendant');
+            assert.equal($withSpan.find('span').text(), 'A', 'Correct element');
+            
+            $container.remove();
+        });
+
+        QUnit.test('$.fn.contents() returns text nodes', function(assert) {
+            var $div = $('<div>Text<span>Span</span>More</div>').appendTo('#qunit-fixture');
+            
+            var contents = $div.contents();
+            assert.equal(contents.length, 3, 'Three child nodes');
+            assert.equal(contents[0].nodeType, 3, 'First is text node');
+            assert.equal(contents[1].nodeType, 1, 'Second is element node');
+            assert.equal(contents[2].nodeType, 3, 'Third is text node');
+            
+            $div.remove();
+        });
+
+        QUnit.module('Event Object Edge Cases');
+
+        QUnit.test('Event object properties', function(assert) {
+            var $div = $('<div></div>').appendTo('#qunit-fixture');
+            var eventObj = null;
+            
+            $div.on('click', function(e) {
+                eventObj = e;
+            });
+            
+            $div.trigger($.Event('click', {
+                which: 1,
+                pageX: 100,
+                pageY: 200,
+                ctrlKey: true
+            }));
+            
+            assert.ok(eventObj, 'Event triggered');
+            assert.equal(eventObj.which, 1, 'which property set');
+            assert.equal(eventObj.pageX, 100, 'pageX property set');
+            assert.equal(eventObj.pageY, 200, 'pageY property set');
+            assert.equal(eventObj.ctrlKey, true, 'ctrlKey property set');
+            assert.ok(typeof eventObj.isDefaultPrevented === 'function', 'isDefaultPrevented is function');
+            
+            $div.remove();
+        });
+
+        QUnit.test('Event.preventDefault() and isDefaultPrevented()', function(assert) {
+            var $div = $('<div></div>').appendTo('#qunit-fixture');
+            var prevented = false;
+            
+            $div.on('custom', function(e) {
+                e.preventDefault();
+                prevented = e.isDefaultPrevented();
+            });
+            
+            $div.trigger('custom');
+            assert.ok(prevented, 'preventDefault() works');
+            
+            $div.remove();
+        });
+
+        QUnit.module('DOM Manipulation Edge Cases');
+
+        QUnit.test('$.fn.wrap() with function', function(assert) {
+            var $items = $('<span>1</span><span>2</span>').appendTo('#qunit-fixture');
+            
+            $items.wrap(function(i) {
+                return '<div class="wrapper-' + i + '"></div>';
+            });
+            
+            assert.ok($items.eq(0).parent().hasClass('wrapper-0'), 'First wrapped correctly');
+            assert.ok($items.eq(1).parent().hasClass('wrapper-1'), 'Second wrapped correctly');
+            
+            $items.parent().remove();
+        });
+
+        QUnit.module('CSS Edge Cases - Function Setters');
+
+        QUnit.test('$.fn.css() with function', function(assert) {
+            var $div = $('<div style="width: 100px;"></div>').appendTo('#qunit-fixture');
+            
+            $div.css('width', function(i, val) {
+                return (parseInt(val) * 2) + 'px';
+            });
+            
+            assert.equal($div.css('width'), '200px', 'Function setter works');
+            
+            $div.remove();
+        });
+
+        QUnit.test('$.cssHooks exists and is extensible', function(assert) {
+            assert.ok($.cssHooks, '$.cssHooks exists');
+            assert.ok(typeof $.cssHooks === 'object', '$.cssHooks is object');
+            
+            // Test that we can add a hook (like jQuery UI does)
+            $.cssHooks.testProp = {
+                get: function(elem, computed, extra) {
+                    return '42';
+                }
+            };
+            
+            assert.ok($.cssHooks.testProp, 'Can add custom cssHook');
+            delete $.cssHooks.testProp;
+        });
+
+        QUnit.module('Attribute Edge Cases');
+
+        QUnit.test('$.fn.attr() with multiple attributes', function(assert) {
+            var $div = $('<div></div>').appendTo('#qunit-fixture');
+            
+            $div.attr({
+                'data-id': '123',
+                'data-name': 'test',
+                'title': 'Title'
+            });
+            
+            assert.equal($div.attr('data-id'), '123', 'First attr set');
+            assert.equal($div.attr('data-name'), 'test', 'Second attr set');
+            assert.equal($div.attr('title'), 'Title', 'Third attr set');
+            
+            $div.remove();
+        });
+
+        QUnit.test('$.fn.prop() with function', function(assert) {
+            var $checkbox = $('<input type="checkbox" checked>').appendTo('#qunit-fixture');
+            
+            $checkbox.prop('checked', function(i, val) {
+                return !val;
+            });
+            
+            assert.equal($checkbox.prop('checked'), false, 'Function setter toggles value');
+            
+            $checkbox.remove();
+        });
+
+        QUnit.test('$.fn.val() on multi-select', function(assert) {
+            var $select = $('<select multiple><option value="a">A</option><option value="b">B</option><option value="c">C</option></select>').appendTo('#qunit-fixture');
+            
+            $select.val(['a', 'c']);
+            var values = $select.val();
+            
+            assert.ok($.isArray(values), 'Returns array');
+            assert.equal(values.length, 2, 'Two values selected');
+            assert.ok(values.indexOf('a') !== -1, 'Contains "a"');
+            assert.ok(values.indexOf('c') !== -1, 'Contains "c"');
+            
+            $select.remove();
+        });
+
+        QUnit.module('Utility Function Edge Cases');
+
+        QUnit.test('$.contains', function(assert) {
+            var $container = $('<div><span><em>Text</em></span></div>').appendTo('#qunit-fixture');
+            var container = $container[0];
+            var span = $container.find('span')[0];
+            var em = $container.find('em')[0];
+            
+            assert.ok($.contains(container, span), 'Contains direct child');
+            assert.ok($.contains(container, em), 'Contains nested child');
+            assert.ok(!$.contains(span, container), 'Does not contain parent');
+            assert.ok(!$.contains(container, container), 'Does not contain self');
+            
+            $container.remove();
+        });
+
+        QUnit.test('$.nodeName', function(assert) {
+            var div = document.createElement('div');
+            var p = document.createElement('p');
+            
+            assert.ok($.nodeName(div, 'div'), 'Matches div');
+            assert.ok($.nodeName(div, 'DIV'), 'Case insensitive');
+            assert.ok(!$.nodeName(div, 'span'), 'Does not match span');
+            assert.ok($.nodeName(p, 'p'), 'Matches p');
+        });
+
+        QUnit.test('$.type edge cases', function(assert) {
+            assert.equal($.type(null), 'null', 'null detected');
+            assert.equal($.type(undefined), 'undefined', 'undefined detected');
+            assert.equal($.type(true), 'boolean', 'boolean detected');
+            assert.equal($.type(42), 'number', 'number detected');
+            assert.equal($.type('string'), 'string', 'string detected');
+            assert.equal($.type({}), 'object', 'object detected');
+            assert.equal($.type([]), 'array', 'array detected');
+            assert.equal($.type(function() {}), 'function', 'function detected');
+            assert.equal($.type(new Date()), 'date', 'date detected');
+            assert.equal($.type(/regex/), 'regexp', 'regexp detected');
+        });
+
+        QUnit.test('$.merge', function(assert) {
+            var first = [1, 2, 3];
+            var second = [4, 5, 6];
+            
+            var result = $.merge(first, second);
+            
+            assert.equal(result.length, 6, 'Merged length correct');
+            assert.equal(first.length, 6, 'First array modified');
+            assert.deepEqual(result, [1, 2, 3, 4, 5, 6], 'Merged correctly');
+        });
+
+        QUnit.test('$.unique / $.uniqueSort', function(assert) {
+            var $container = $('<div><p>1</p><p>2</p><p>3</p></div>').appendTo('#qunit-fixture');
+            var elems = $container.find('p').get();
+            var duplicates = elems.concat(elems[0], elems[1]);
+            
+            var unique = $.uniqueSort(duplicates);
+            
+            assert.equal(unique.length, 3, 'Duplicates removed');
+            assert.equal(unique[0], elems[0], 'Order preserved');
+            
+            $container.remove();
+        });
+
+        QUnit.module('Deferred/Promise Edge Cases');
+
+        QUnit.test('$.Deferred().then() chaining', function(assert) {
+            var done = assert.async();
+            var results = [];
+            
+            var dfd = $.Deferred();
+            
+            dfd.then(function(val) {
+                results.push('first: ' + val);
+                return val * 2;
+            }).then(function(val) {
+                results.push('second: ' + val);
+                return val * 2;
+            }).done(function(val) {
+                results.push('done: ' + val);
+                
+                assert.equal(results.length, 3, 'All callbacks fired');
+                assert.equal(results[0], 'first: 10', 'First then fired');
+                assert.equal(results[1], 'second: 20', 'Second then fired');
+                assert.equal(results[2], 'done: 40', 'Done fired');
+                done();
+            });
+            
+            dfd.resolve(10);
+        });
+
+        QUnit.test('$.Deferred().fail() and .always()', function(assert) {
+            var done = assert.async();
+            var failFired = false;
+            var alwaysFired = false;
+            
+            var dfd = $.Deferred();
+            
+            dfd.fail(function() {
+                failFired = true;
+            }).always(function() {
+                alwaysFired = true;
+                
+                assert.ok(failFired, 'fail() fired on reject');
+                assert.ok(alwaysFired, 'always() fired on reject');
+                done();
+            });
+            
+            dfd.reject();
+        });
+
+        QUnit.test('$.when with multiple deferreds', function(assert) {
+            var done = assert.async();
+            
+            var dfd1 = $.Deferred();
+            var dfd2 = $.Deferred();
+            
+            $.when(dfd1, dfd2).done(function(val1, val2) {
+                assert.equal(val1, 'first', 'First value correct');
+                assert.equal(val2, 'second', 'Second value correct');
+                done();
+            });
+            
+            setTimeout(function() {
+                dfd1.resolve('first');
+                dfd2.resolve('second');
+            }, 10);
+        });
+
+        QUnit.module('Animation/Queue Edge Cases');
+
+        QUnit.test('$.fn.delay()', function(assert) {
+            var done = assert.async();
+            var $div = $('<div></div>').appendTo('#qunit-fixture');
+            var fired = false;
+            
+            $div.delay(50).queue(function(next) {
+                fired = true;
+                next();
+            });
+            
+            assert.ok(!fired, 'Not fired immediately');
+            
+            setTimeout(function() {
+                assert.ok(fired, 'Fired after delay');
+                $div.remove();
+                done();
+            }, 100);
+        });
+
+        QUnit.module('Selector Engine Edge Cases');
+
+        QUnit.test(':eq() pseudo selector', function(assert) {
+            var $container = $('<div><p>0</p><p>1</p><p>2</p></div>').appendTo('#qunit-fixture');
+            
+            var $eq1 = $container.find('p:eq(1)');
+            assert.equal($eq1.length, 1, 'One element selected');
+            assert.equal($eq1.text(), '1', 'Correct element');
+            
+            $container.remove();
+        });
+
+        QUnit.test(':first and :last pseudo selectors', function(assert) {
+            var $container = $('<div><p>First</p><p>Middle</p><p>Last</p></div>').appendTo('#qunit-fixture');
+            
+            assert.equal($container.find('p:first').text(), 'First', ':first works');
+            assert.equal($container.find('p:last').text(), 'Last', ':last works');
+            
+            $container.remove();
+        });
+
+        QUnit.test(':not() pseudo selector', function(assert) {
+            var $container = $('<div><p class="a">A</p><p class="b">B</p><p class="c">C</p></div>').appendTo('#qunit-fixture');
+            
+            var $notB = $container.find('p:not(.b)');
+            assert.equal($notB.length, 2, 'Two elements selected');
+            assert.ok($notB.eq(0).hasClass('a'), 'First is .a');
+            assert.ok($notB.eq(1).hasClass('c'), 'Second is .c');
+            
+            $container.remove();
+        });
+
+        QUnit.module('AJAX Edge Cases');
+
+        QUnit.test('$.ajaxSetup modifies defaults', function(assert) {
+            var originalTimeout = $.ajaxSettings.timeout;
+            
+            $.ajaxSetup({
+                timeout: 9999,
+                headers: { 'X-Test': 'value' }
+            });
+            
+            assert.equal($.ajaxSettings.timeout, 9999, 'Timeout updated');
+            assert.equal($.ajaxSettings.headers['X-Test'], 'value', 'Headers added');
+            
+            // Restore
+            $.ajaxSettings.timeout = originalTimeout;
+            delete $.ajaxSettings.headers['X-Test'];
+        });
+
+        QUnit.test('$.Callbacks functionality', function(assert) {
+            var callbacks = $.Callbacks();
+            var results = [];
+            
+            callbacks.add(function(val) {
+                results.push('first: ' + val);
+            });
+            
+            callbacks.add(function(val) {
+                results.push('second: ' + val);
+            });
+            
+            callbacks.fire('test');
+            
+            assert.equal(results.length, 2, 'Both callbacks fired');
+            assert.equal(results[0], 'first: test', 'First callback correct');
+            assert.equal(results[1], 'second: test', 'Second callback correct');
+        });
+
+        QUnit.module('Edge Case Scenarios');
+
+        QUnit.test('Chaining returns correct collection', function(assert) {
+            var $div = $('<div></div>').appendTo('#qunit-fixture');
+            
+            var result = $div
+                .addClass('test')
+                .attr('data-id', '123')
+                .css('color', 'red')
+                .data('key', 'value');
+            
+            assert.equal(result[0], $div[0], 'Chaining returns same collection');
+            assert.ok(result.hasClass('test'), 'Class added');
+            assert.equal(result.attr('data-id'), '123', 'Attribute set');
+            assert.equal(result.css('color'), 'rgb(255, 0, 0)', 'CSS set');
+            assert.equal(result.data('key'), 'value', 'Data set');
+            
+            $div.remove();
+        });
+
+        QUnit.test('Empty collection method calls do not throw', function(assert) {
+            var $empty = $('.does-not-exist');
+            
+            // Should not throw
+            $empty.addClass('test');
+            $empty.css('color', 'red');
+            $empty.attr('data-test', 'value');
+            $empty.on('click', function() {});
+            $empty.trigger('click');
+            
+            assert.ok(true, 'No errors on empty collection');
+        });
+
+        QUnit.test('Multiple selector with context', function(assert) {
+            var $container = $('<div id="ctx"><p class="a">A</p><span class="a">B</span></div>').appendTo('#qunit-fixture');
+            
+            var $found = $('p.a, span.a', $container);
+            
+            assert.equal($found.length, 2, 'Multiple selector works with context');
+            
+            $container.remove();
         });

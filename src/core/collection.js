@@ -102,12 +102,26 @@ export class jQCollection {
     
     // Handle string selector
     if (isString(selector)) {
-      // HTML string: $('<div>') - but check for second arg being props object
-      if (selector[0] === '<' && selector[selector.length - 1] === '>' && selector.length >= 3) {
+      // Trim the selector for HTML detection
+      const trimmed = selector.trim();
+      
+      // HTML string: $('<div>') - detect HTML by looking for < at start of trimmed string
+      // Also handle strings that look like HTML (contain < followed by tag-like content)
+      const isHtml = trimmed[0] === '<' && trimmed[trimmed.length - 1] === '>' && trimmed.length >= 3;
+      // Also check for HTML fragments that might not start with < (like text nodes followed by tags)
+      // or have leading/trailing content - but primarily look for HTML tag patterns
+      const looksLikeHtml = !isHtml && (
+        // Check if it looks like HTML: contains <tagname or </ pattern
+        /<[a-zA-Z][^>]*>/.test(selector) ||
+        // Or starts with whitespace followed by <
+        /^\s*</.test(selector)
+      );
+      
+      if (isHtml || looksLikeHtml) {
         // Parse HTML
         const doc = context && context.ownerDocument ? context.ownerDocument :
                     (context && context.nodeType === 9 ? context : document);
-        const nodes = parseHTML(selector, doc, true);
+        const nodes = parseHTML(trimmed, doc, true);
         this._push(nodes || []);
         
         // Handle props object: $('<div/>', { class: 'foo', text: 'bar' })
@@ -131,7 +145,7 @@ export class jQCollection {
         const elements = querySelectorAllWithPseudo(selector, contextElem);
         this._push(elements);
       } catch (e) {
-        // Invalid selector - return empty collection
+        // Invalid selector - return empty collection silently (jQuery behavior)
       }
       return this;
     }
