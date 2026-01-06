@@ -90,8 +90,10 @@ export function html(collection, value) {
   return collection.each(function(i) {
     const oldHtml = this.innerHTML;
     
-    // Clean up events/data on children
-    cleanData(Array.from(this.getElementsByTagName('*')));
+    // Clean up events/data on children (only for elements/documents/fragments)
+    if (this.nodeType === 1 || this.nodeType === 9 || this.nodeType === 11) {
+      cleanData(Array.from(this.getElementsByTagName('*')));
+    }
     
     // Set new content
     const newValue = isFunction(value) ? value.call(this, i, oldHtml) : value;
@@ -411,8 +413,10 @@ export function unwrap(collection, selector) {
  */
 export function empty(collection) {
   return collection.each(function() {
-    // Clean up data on children
-    cleanData(Array.from(this.getElementsByTagName('*')));
+    // Clean up data on children (only for elements/documents/fragments)
+    if (this.nodeType === 1 || this.nodeType === 9 || this.nodeType === 11) {
+      cleanData(Array.from(this.getElementsByTagName('*')));
+    }
     
     // Remove children
     while (this.firstChild) {
@@ -438,7 +442,9 @@ export function remove(collection, selector) {
     
     // Clean up data and events
     cleanData([elem]);
-    cleanData(Array.from(elem.getElementsByTagName('*')));
+    if (elem.nodeType === 1 || elem.nodeType === 9 || elem.nodeType === 11) {
+      cleanData(Array.from(elem.getElementsByTagName('*')));
+    }
     
     // Remove from DOM
     if (elem.parentNode) {
@@ -487,7 +493,9 @@ export function replaceWith(collection, newContent, jQNext) {
     if (this.parentNode) {
       // Clean up
       cleanData([this]);
-      cleanData(Array.from(this.getElementsByTagName('*')));
+      if (this.nodeType === 1 || this.nodeType === 9 || this.nodeType === 11) {
+        cleanData(Array.from(this.getElementsByTagName('*')));
+      }
       
       // Insert new content
       nodes.forEach((node, j) => {

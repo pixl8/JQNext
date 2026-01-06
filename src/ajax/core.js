@@ -301,7 +301,11 @@ export function ajax(url, settings) {
       }
     })
     .then(data => {
-      done(jqXHR.status, jqXHR.statusText, data);
+      // Use setTimeout to ensure done() callbacks run outside promise chain
+      // This prevents errors in user callbacks from being caught by our catch block
+      setTimeout(() => {
+        done(jqXHR.status, jqXHR.statusText, data);
+      }, 0);
     })
     .catch(error => {
       if (error.name === 'AbortError') {
@@ -312,7 +316,9 @@ export function ajax(url, settings) {
       jqXHR.status = error.status || 0;
       jqXHR.statusText = error.statusText || 'error';
       
-      done(jqXHR.status, jqXHR.statusText, null, error);
+      setTimeout(() => {
+        done(jqXHR.status, jqXHR.statusText, null, error);
+      }, 0);
     });
   
   /**
@@ -369,12 +375,14 @@ export function ajax(url, settings) {
  * Trigger global AJAX event
  */
 function triggerGlobal(type, args = []) {
-  const event = new CustomEvent(type, {
-    bubbles: true,
-    cancelable: true,
-    detail: args
-  });
-  document.dispatchEvent(event);
+  // Use the global jQuery reference (presideJQuery in Preside)
+  // jQuery event handlers expect parameters as separate arguments, not in event.detail
+  const $ = typeof presideJQuery !== 'undefined' ? presideJQuery :
+           typeof jQuery !== 'undefined' ? jQuery : null;
+  
+  if ($) {
+    $(document).trigger(type, args);
+  }
 }
 
 /**

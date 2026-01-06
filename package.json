@@ -1,6 +1,6 @@
 {
   "name": "jqnext",
-  "version": "1.0.7",
+  "version": "1.0.11",
   "description": "Modern jQuery 2.x API-compatible library using native JavaScript internals - drop-in replacement for jQuery with jQuery UI support",
   "main": "dist/jqnext.js",
   "module": "dist/jqnext.esm.js",

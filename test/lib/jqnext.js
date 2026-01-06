@@ -3554,8 +3554,10 @@
     return collection.each(function(i) {
       const oldHtml = this.innerHTML;
       
-      // Clean up events/data on children
-      cleanData(Array.from(this.getElementsByTagName('*')));
+      // Clean up events/data on children (only for elements/documents/fragments)
+      if (this.nodeType === 1 || this.nodeType === 9 || this.nodeType === 11) {
+        cleanData(Array.from(this.getElementsByTagName('*')));
+      }
       
       // Set new content
       const newValue = isFunction(value) ? value.call(this, i, oldHtml) : value;
@@ -3875,8 +3877,10 @@
    */
   function empty(collection) {
     return collection.each(function() {
-      // Clean up data on children
-      cleanData(Array.from(this.getElementsByTagName('*')));
+      // Clean up data on children (only for elements/documents/fragments)
+      if (this.nodeType === 1 || this.nodeType === 9 || this.nodeType === 11) {
+        cleanData(Array.from(this.getElementsByTagName('*')));
+      }
       
       // Remove children
       while (this.firstChild) {
@@ -3902,7 +3906,9 @@
       
       // Clean up data and events
       cleanData([elem]);
-      cleanData(Array.from(elem.getElementsByTagName('*')));
+      if (elem.nodeType === 1 || elem.nodeType === 9 || elem.nodeType === 11) {
+        cleanData(Array.from(elem.getElementsByTagName('*')));
+      }
       
       // Remove from DOM
       if (elem.parentNode) {
@@ -3951,7 +3957,9 @@
       if (this.parentNode) {
         // Clean up
         cleanData([this]);
-        cleanData(Array.from(this.getElementsByTagName('*')));
+        if (this.nodeType === 1 || this.nodeType === 9 || this.nodeType === 11) {
+          cleanData(Array.from(this.getElementsByTagName('*')));
+        }
         
         // Insert new content
         nodes.forEach((node, j) => {
@@ -6381,7 +6389,11 @@
         }
       })
       .then(data => {
-        done(jqXHR.status, jqXHR.statusText, data);
+        // Use setTimeout to ensure done() callbacks run outside promise chain
+        // This prevents errors in user callbacks from being caught by our catch block
+        setTimeout(() => {
+          done(jqXHR.status, jqXHR.statusText, data);
+        }, 0);
       })
       .catch(error => {
         if (error.name === 'AbortError') {
@@ -6392,7 +6404,9 @@
         jqXHR.status = error.status || 0;
         jqXHR.statusText = error.statusText || 'error';
         
-        done(jqXHR.status, jqXHR.statusText, null, error);
+        setTimeout(() => {
+          done(jqXHR.status, jqXHR.statusText, null, error);
+        }, 0);
       });
     
     /**
@@ -6449,12 +6463,14 @@
    * Trigger global AJAX event
    */
   function triggerGlobal(type, args = []) {
-    const event = new CustomEvent(type, {
-      bubbles: true,
-      cancelable: true,
-      detail: args
-    });
-    document.dispatchEvent(event);
+    // Use the global jQuery reference (presideJQuery in Preside)
+    // jQuery event handlers expect parameters as separate arguments, not in event.detail
+    const $ = typeof presideJQuery !== 'undefined' ? presideJQuery :
+             typeof jQuery !== 'undefined' ? jQuery : null;
+    
+    if ($) {
+      $(document).trigger(type, args);
+    }
   }
 
   /**
