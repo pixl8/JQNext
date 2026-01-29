@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "rollup -c && npm run copy-to-test",
-    "copy-to-test": "cp dist/jqnext.js test/lib/jqnext.js && cp dist/jqnext.js.map test/lib/jqnext.js.map",
+    "copy-to-test": "cp dist/jqnext-*.js test/lib/jqnext.js && cp dist/jqnext-*.js.map test/lib/jqnext.js.map 2>/dev/null || true",
     "build:watch": "rollup -c -w",
     "dev": "rollup -c -w",
     "test": "jest",

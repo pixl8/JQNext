@@ -40,26 +40,21 @@ jobs:
             ## jQNext ${{ github.ref_name }}
             
             ### Downloads
-            - **jqnext.js** - UMD build (development)
-            - **jqnext.min.js** - Minified UMD build (production)
-            - **jqnext.esm.js** - ES Module build
-            
-            ### Installation
-            ```bash
-            npm install jqnext@${{ steps.get_version.outputs.VERSION }}
-            ```
+            - **jqnext-${{ steps.get_version.outputs.VERSION }}.js** - UMD build (development)
+            - **jqnext-${{ steps.get_version.outputs.VERSION }}.min.js** - Minified UMD build (production)
+            - **jqnext-${{ steps.get_version.outputs.VERSION }}.esm.js** - ES Module build
             
             ### CDN Usage
             ```html
-            <script src="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/jqnext.min.js"></script>
+            <script src="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/jqnext-${{ steps.get_version.outputs.VERSION }}.min.js"></script>
             ```
           files: |
-            dist/jqnext.js
-            dist/jqnext.min.js
-            dist/jqnext.esm.js
-            dist/jqnext.js.map
-            dist/jqnext.min.js.map
-            dist/jqnext.esm.js.map
+            dist/jqnext-${{ steps.get_version.outputs.VERSION }}.js
+            dist/jqnext-${{ steps.get_version.outputs.VERSION }}.min.js
+            dist/jqnext-${{ steps.get_version.outputs.VERSION }}.esm.js
+            dist/jqnext-${{ steps.get_version.outputs.VERSION }}.js.map
+            dist/jqnext-${{ steps.get_version.outputs.VERSION }}.min.js.map
+            dist/jqnext-${{ steps.get_version.outputs.VERSION }}.esm.js.map
           draft: false
           prerelease: false
         env:

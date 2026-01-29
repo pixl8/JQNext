@@ -22,7 +22,7 @@ export default [
     input: 'src/jqnext.js',
     output: [
       {
-        file: 'dist/jqnext.js',
+        file: `dist/jqnext-${version}.js`,
         format: 'umd',
         name: 'jQuery',
         amd: {
@@ -40,7 +40,7 @@ if (typeof window !== 'undefined') {
 `
       },
       {
-        file: 'dist/jqnext.min.js',
+        file: `dist/jqnext-${version}.min.js`,
         format: 'umd',
         name: 'jQuery',
         amd: {
@@ -68,7 +68,7 @@ if (typeof window !== 'undefined') {
   {
     input: 'src/jqnext.js',
     output: {
-      file: 'dist/jqnext.esm.js',
+      file: `dist/jqnext-${version}.esm.js`,
       format: 'es',
       banner,
       sourcemap: true
