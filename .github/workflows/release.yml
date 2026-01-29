@@ -1,0 +1,66 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## jQNext ${{ github.ref_name }}
+            
+            ### Downloads
+            - **jqnext.js** - UMD build (development)
+            - **jqnext.min.js** - Minified UMD build (production)
+            - **jqnext.esm.js** - ES Module build
+            
+            ### Installation
+            ```bash
+            npm install jqnext@${{ steps.get_version.outputs.VERSION }}
+            ```
+            
+            ### CDN Usage
+            ```html
+            <script src="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/jqnext.min.js"></script>
+            ```
+          files: |
+            dist/jqnext.js
+            dist/jqnext.min.js
+            dist/jqnext.esm.js
+            dist/jqnext.js.map
+            dist/jqnext.min.js.map
+            dist/jqnext.esm.js.map
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
