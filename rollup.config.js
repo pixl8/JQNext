@@ -1,8 +1,12 @@
 import resolve from '@rollup/plugin-node-resolve';
 import terser from '@rollup/plugin-terser';
+import { readFileSync } from 'fs';
+
+const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
+const version = pkg.version;
 
 const banner = `/*!
- * jQNext v1.0.0 - Modern jQuery 2.x Compatible Library
+ * jQNext v${version} - Modern jQuery 2.x Compatible Library
  * https://gitlab.com/ready-intelligence/jqnext
  * 
  * Copyright (c) ${new Date().getFullYear()} Ready Intelligence
