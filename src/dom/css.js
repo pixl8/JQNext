@@ -237,45 +237,87 @@ function dimension(collection, dim, value, extra) {
     }
     
     // Element
-    const rect = elem.getBoundingClientRect();
+    // For hidden elements (display:none) computed dimensions are 0.
+    // Use jQuery's "swap" technique: temporarily show to allow measurement.
     const computed = getStyles(elem);
-    let result = rect[dim];
-    
-    if (!extra) {
-      // Content only (subtract padding and border)
-      if (dim === 'width') {
-        result -= parseFloat(computed.paddingLeft) || 0;
-        result -= parseFloat(computed.paddingRight) || 0;
-        result -= parseFloat(computed.borderLeftWidth) || 0;
-        result -= parseFloat(computed.borderRightWidth) || 0;
+    let swapped = false;
+    let savedStyles = {};
+    if (computed.display === 'none' || computed.display === '') {
+      savedStyles = { display: elem.style.display, visibility: elem.style.visibility, position: elem.style.position };
+      elem.style.display    = 'block';
+      elem.style.visibility = 'hidden';
+      elem.style.position   = 'absolute';
+      swapped = true;
+    }
+
+    // Use getComputedStyle for the content dimension — matches jQuery's subpixel
+    // accuracy. getComputedStyle always returns the content-box size regardless
+    // of box-sizing. Re-read styles after swap so we get the live layout values.
+    const measuredStyles = swapped ? getStyles(elem) : computed;
+    let contentSize = parseFloat( dim === 'width' ? measuredStyles.width : measuredStyles.height ) || 0;
+
+    // For elements with no explicit size (e.g. a div sized by text content),
+    // getComputedStyle may return 0 or 'auto'. Fall back to getBoundingClientRect.
+    if ( !contentSize ) {
+      const rect = elem.getBoundingClientRect();
+      const borderBoxSize = rect[ dim ];
+      if ( dim === 'width' ) {
+        contentSize = borderBoxSize
+          - ( parseFloat( measuredStyles.paddingLeft )      || 0 )
+          - ( parseFloat( measuredStyles.paddingRight )     || 0 )
+          - ( parseFloat( measuredStyles.borderLeftWidth )  || 0 )
+          - ( parseFloat( measuredStyles.borderRightWidth ) || 0 );
       } else {
-        result -= parseFloat(computed.paddingTop) || 0;
-        result -= parseFloat(computed.paddingBottom) || 0;
-        result -= parseFloat(computed.borderTopWidth) || 0;
-        result -= parseFloat(computed.borderBottomWidth) || 0;
-      }
-    } else if (extra === 'inner') {
-      // Content + padding (subtract border)
-      if (dim === 'width') {
-        result -= parseFloat(computed.borderLeftWidth) || 0;
-        result -= parseFloat(computed.borderRightWidth) || 0;
-      } else {
-        result -= parseFloat(computed.borderTopWidth) || 0;
-        result -= parseFloat(computed.borderBottomWidth) || 0;
-      }
-    } else if (extra === 'outerMargin') {
-      // Content + padding + border + margin
-      if (dim === 'width') {
-        result += parseFloat(computed.marginLeft) || 0;
-        result += parseFloat(computed.marginRight) || 0;
-      } else {
-        result += parseFloat(computed.marginTop) || 0;
-        result += parseFloat(computed.marginBottom) || 0;
+        contentSize = borderBoxSize
+          - ( parseFloat( measuredStyles.paddingTop )        || 0 )
+          - ( parseFloat( measuredStyles.paddingBottom )     || 0 )
+          - ( parseFloat( measuredStyles.borderTopWidth )    || 0 )
+          - ( parseFloat( measuredStyles.borderBottomWidth ) || 0 );
       }
     }
-    // 'outer' = content + padding + border (the default getBoundingClientRect)
-    
-    return Math.round(result);
+
+    if ( swapped ) {
+      elem.style.display    = savedStyles.display;
+      elem.style.visibility = savedStyles.visibility;
+      elem.style.position   = savedStyles.position;
+    }
+
+    // Build the result by adding extras to the content size
+    let p1, p2, b1, b2, m1, m2;
+    if ( dim === 'width' ) {
+      p1 = parseFloat( measuredStyles.paddingLeft )      || 0;
+      p2 = parseFloat( measuredStyles.paddingRight )     || 0;
+      b1 = parseFloat( measuredStyles.borderLeftWidth )  || 0;
+      b2 = parseFloat( measuredStyles.borderRightWidth ) || 0;
+      m1 = parseFloat( measuredStyles.marginLeft )       || 0;
+      m2 = parseFloat( measuredStyles.marginRight )      || 0;
+    } else {
+      p1 = parseFloat( measuredStyles.paddingTop )        || 0;
+      p2 = parseFloat( measuredStyles.paddingBottom )     || 0;
+      b1 = parseFloat( measuredStyles.borderTopWidth )    || 0;
+      b2 = parseFloat( measuredStyles.borderBottomWidth ) || 0;
+      m1 = parseFloat( measuredStyles.marginTop )         || 0;
+      m2 = parseFloat( measuredStyles.marginBottom )      || 0;
+    }
+
+    // jQuery uses offsetWidth/offsetHeight for outer dimensions — these are
+    // always integers and avoid subpixel rounding inconsistencies on HiDPI.
+    const offsetSize = dim === 'width' ? elem.offsetWidth : elem.offsetHeight;
+
+    let result;
+    if ( !extra ) {
+      result = contentSize;           // content only — getComputedStyle (subpixel, matches jQuery)
+    } else if ( extra === 'inner' ) {
+      result = contentSize + p1 + p2; // content + padding (subpixel, matches jQuery)
+    } else if ( extra === 'outer' ) {
+      result = offsetSize;            // offsetWidth/Height — integer, matches jQuery
+    } else if ( extra === 'outerMargin' ) {
+      result = offsetSize + m1 + m2;  // offsetWidth + margin — matches jQuery
+    } else {
+      result = contentSize;
+    }
+
+    return result;
   }
   
   // Setter

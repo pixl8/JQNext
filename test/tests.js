@@ -516,6 +516,18 @@ if (typeof window.presideJQuery !== 'undefined') {
             $('#test-div').off('click');
         });
         
+        QUnit.test('.click() on file input triggers native click (not synthetic)', function(assert) {
+            // Browsers only open the file dialog for native click events — not
+            // synthetic CustomEvents. $.click() on a file input must call the
+            // element's native .click() method, matching jQuery 2.x behaviour.
+            var $input = $('<input type="file">').appendTo('#qunit-fixture');
+            var nativeClickCalled = false;
+            $input[0].click = function() { nativeClickCalled = true; };
+            $input.click();
+            $input.remove();
+            assert.ok(nativeClickCalled, 'Native .click() called on file input');
+        });
+
         QUnit.test('Event delegation', function(assert) {
             assert.expect(1);
             var done = assert.async();
@@ -1314,10 +1326,9 @@ QUnit.module('Plugin Compatibility - Dimensions');
 
         QUnit.test('innerWidth/innerHeight', function(assert) {
             var $el = $('#dimension-test');
-            // width (100) + padding (10*2) = 120
-            assert.equal($el.innerWidth(), 120, 'innerWidth includes padding');
-            // height (100) + padding (10*2) = 120
-            assert.equal($el.innerHeight(), 120, 'innerHeight includes padding');
+            // width (100) + padding (10*2) = 120 — use Math.round to allow for subpixel rendering
+            assert.equal(Math.round($el.innerWidth()), 120, 'innerWidth includes padding');
+            assert.equal(Math.round($el.innerHeight()), 120, 'innerHeight includes padding');
         });
 
         QUnit.test('outerWidth/outerHeight', function(assert) {
@@ -1333,6 +1344,21 @@ QUnit.module('Plugin Compatibility - Dimensions');
             // Note: margin is 20px on all sides, so left+right = 40
             assert.equal($el.outerWidth(true), 170, 'outerWidth(true) includes margin');
             assert.equal($el.outerHeight(true), 170, 'outerHeight(true) includes margin');
+        });
+
+        QUnit.test('.width() on display:none element (hidden swap)', function(assert) {
+            // display:none elements should return their CSS-specified width,
+            // matching jQuery 2.x behaviour used by typeahead controls to
+            // measure text width in hidden measurement divs.
+            var $explicit = $('<div style="display:none; width:80px; height:20px;"></div>').appendTo('#qunit-fixture');
+            assert.equal($explicit.width(), 80, '.width() returns explicit CSS width for display:none element');
+            $explicit.remove();
+
+            // Elements sized by content (no explicit width) should also return non-zero
+            var $textEl = $('<div style="display:none; white-space:nowrap;">Hello World</div>').appendTo('#qunit-fixture');
+            var w = $textEl.width();
+            $textEl.remove();
+            assert.ok(w > 0, '.width() returns non-zero for content-sized display:none element (got ' + w + ')');
         });
 
         QUnit.module('Plugin Compatibility - Visibility');

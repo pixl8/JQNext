@@ -40,10 +40,12 @@ export const special = {
     },
     delegateType: 'focusout'
   },
-  // Click for checkbox/radio needs special handling
+  // Click for checkbox/radio/file inputs needs special handling —
+  // synthetic events don't open file dialogs or toggle checkboxes reliably
   click: {
     trigger: function() {
-      if (this.type === 'checkbox' && this.click && this.nodeName.toLowerCase() === 'input') {
+      if ( this.click && this.nodeName.toLowerCase() === 'input' &&
+           ( this.type === 'checkbox' || this.type === 'radio' || this.type === 'file' ) ) {
         this.click();
         return false;
       }
