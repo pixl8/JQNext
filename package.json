@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "rollup -c && npm run copy-to-test",
-    "copy-to-test": "cp dist/jqnext-*.js test/lib/jqnext.js && cp dist/jqnext-*.js.map test/lib/jqnext.js.map 2>/dev/null || true",
+    "copy-to-test": "cp \"$(ls dist/jqnext-*.js | grep -vE '\\.(esm|min)\\.js$')\" test/lib/jqnext.js && (cp \"$(ls dist/jqnext-*.js.map | grep -vE '\\.(esm|min)\\.js\\.map$')\" test/lib/jqnext.js.map 2>/dev/null || true)",
     "build:watch": "rollup -c -w",
     "dev": "rollup -c -w",
     "test": "jest",

@@ -1007,6 +1007,49 @@ if (typeof window.presideJQuery !== 'undefined') {
             }, 50);
         });
         
+        QUnit.test('.focus() with a re-focusing handler does not recurse (regression)', function(assert) {
+            // Preside's "chosen" dropdown binds a focus handler that re-focuses
+            // the field. Without a recursion guard this blew the stack with
+            // "Maximum call stack size exceeded". The handler must fire, focus
+            // the element, and terminate.
+            var calls = 0;
+            $('#focus-input-1').on('focus', function() {
+                calls++;
+                if (calls < 100) {
+                    $('#focus-input-1').focus();
+                }
+            });
+
+            var threw = false;
+            try {
+                $('#focus-input-1').focus();
+            } catch (e) {
+                threw = true;
+            }
+
+            assert.notOk(threw, 'no RangeError / stack overflow');
+            assert.ok(calls >= 1, 'focus handler fired');
+            assert.ok(calls < 100, 'handler did not recurse unbounded (' + calls + ' calls)');
+            $('#focus-input-1').off('focus');
+        });
+
+        QUnit.test('.focus() does not focus ancestor elements (regression)', function(assert) {
+            // The default focus action must run only on the target, never on
+            // ancestors reached by propagation — otherwise triggering focus
+            // calls body.focus() and steals the active element.
+            var bodyFocused = false;
+            var origBodyFocus = document.body.focus;
+            document.body.focus = function() { bodyFocused = true; return origBodyFocus.apply(this, arguments); };
+
+            try {
+                $('#focus-input-1').focus();
+            } finally {
+                document.body.focus = origBodyFocus;
+            }
+
+            assert.notOk(bodyFocused, 'body.focus() was not called while focusing the input');
+        });
+
         QUnit.test('focusin event bubbles', function(assert) {
             var done = assert.async();
             var bubbled = false;

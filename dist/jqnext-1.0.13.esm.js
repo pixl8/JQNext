@@ -2742,6 +2742,22 @@ function offsetParent(collection) {
 // Event handler storage using WeakMap
 const handlersStorage = new WeakMap();
 
+// Recursion guard, mirroring jQuery.event.triggered.
+// While we invoke a native method such as elem.focus()/blur()/click() from
+// triggerEvent(), the browser fires a *real* event of the same type. Without
+// this flag that native event re-enters the bound handlers, so a handler that
+// re-triggers the same event (e.g. Preside's "chosen" dropdown re-focusing its
+// field) recurses until the stack overflows. When `triggered` matches the
+// incoming native event's type we skip our handler dispatch for it.
+let triggered;
+
+// Re-entrancy guard for triggerEvent(): tracks the event types currently being
+// triggered on each element. If a handler re-triggers the same event on the same
+// element (e.g. a focus handler that calls .focus()), the nested trigger is a
+// no-op instead of recursing until the stack overflows. jQuery achieves the same
+// effect via its leverageNative de-duplication.
+const inProgress = new WeakMap();
+
 /**
  * Get handlers storage for an element (for jQuery._data compatibility)
  * @param {Element} elem
@@ -2896,6 +2912,13 @@ function createHandler(elem) {
   }
   
   handlers.handle = function(nativeEvent) {
+    // Recursion guard: ignore native events that our own trigger() produced by
+    // calling a native method (elem.focus()/blur()/click()/...). Real
+    // user-initiated events have `triggered` unset and dispatch normally.
+    if (triggered === nativeEvent.type) {
+      return;
+    }
+
     // Create jQuery-like event object
     const event = fixEvent(nativeEvent);
     
@@ -3368,8 +3391,13 @@ function triggerHandler(collection, event, data) {
 
 /**
  * Core trigger function
+ * @param {boolean} [isRoot=true] - True for the element trigger() was called on.
+ *   The default action (special trigger / native method) only runs on the
+ *   originating element, not on ancestors reached via propagation — this mirrors
+ *   jQuery, which fires the default action once on the target. Running it on
+ *   ancestors would, for focus, call body.focus() and steal the active element.
  */
-function triggerEvent(elem, event, data, propagate) {
+function triggerEvent(elem, event, data, propagate, isRoot = true) {
   const eventType = isString(event) ? event : event.type;
   const parsedTypes = parseEventTypes(eventType);
   
@@ -3411,34 +3439,62 @@ function triggerEvent(elem, event, data, propagate) {
   // Store extra arguments for handlers (jQuery compatibility)
   // data can be an array that should be spread as extra args
   eventObj._extraArgs = data != null ? (Array.isArray(data) ? data : [data]) : [];
-  
-  // Trigger on element
-  const handlers = handlersStorage.get(elem);
-  if (handlers?.handle) {
-    handlers.handle(eventObj);
+
+  // Re-entrancy guard: bail if a trigger of this type is already running on this
+  // element (a handler re-triggered the same event on the same element).
+  let typeSet = inProgress.get(elem);
+  if (typeSet?.has(type)) {
+    return eventObj.result;
   }
-  
-  // Propagate to parent if needed
-  if (propagate && !eventObj.isPropagationStopped() && elem.parentNode) {
-    triggerEvent(elem.parentNode, eventObj, data, true);
+  if (!typeSet) {
+    typeSet = new Set();
+    inProgress.set(elem, typeSet);
   }
-  
-  // Check special trigger - if it returns false, it handles native behavior itself
-  const specialTrigger = special[type]?.trigger;
-  const specialHandled = specialTrigger?.call(elem, data) === false;
-  
-  // Trigger native event if applicable (unless special handler did it)
-  if (propagate && !eventObj.isDefaultPrevented() && !specialHandled) {
-    const nativeEventName = 'on' + type;
-    if (elem[nativeEventName] && isFunction(elem[type])) {
-      // Temporarily prevent re-triggering
-      const old = elem[nativeEventName];
-      elem[nativeEventName] = null;
-      elem[type]();
-      elem[nativeEventName] = old;
+  typeSet.add(type);
+
+  try {
+    // Trigger on element
+    const handlers = handlersStorage.get(elem);
+    if (handlers?.handle) {
+      handlers.handle(eventObj);
     }
+
+    // Propagate to parent if needed
+    if (propagate && !eventObj.isPropagationStopped() && elem.parentNode) {
+      triggerEvent(elem.parentNode, eventObj, data, true, false);
+    }
+
+    // The default action (special trigger + native method) runs only on the
+    // element trigger() was called on, after bubbling — never on ancestors.
+    if (isRoot) {
+      // Guard the native calls below: any same-type native event they emit must
+      // not re-enter our handlers (see the `triggered` flag declaration).
+      const prevTriggered = triggered;
+      triggered = type;
+      try {
+        // Check special trigger - if it returns false, it handles native behavior itself
+        const specialTrigger = special[type]?.trigger;
+        const specialHandled = specialTrigger?.call(elem, data) === false;
+
+        // Trigger native event if applicable (unless special handler did it)
+        if (propagate && !eventObj.isDefaultPrevented() && !specialHandled) {
+          const nativeEventName = 'on' + type;
+          if (elem[nativeEventName] && isFunction(elem[type])) {
+            // Temporarily prevent re-triggering
+            const old = elem[nativeEventName];
+            elem[nativeEventName] = null;
+            elem[type]();
+            elem[nativeEventName] = old;
+          }
+        }
+      } finally {
+        triggered = prevTriggered;
+      }
+    }
+  } finally {
+    typeSet.delete(type);
   }
-  
+
   return eventObj.result;
 }
 
