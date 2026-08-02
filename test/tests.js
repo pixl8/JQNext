@@ -526,6 +526,51 @@ if (typeof window.presideJQuery !== 'undefined') {
             $('#test-div').off('customEvent');
         });
         
+        QUnit.test('a handler may re-trigger the same event, visibly to other handlers', function(assert) {
+            // jQuery parity: a nested synchronous .trigger() of the SAME event
+            // type on the SAME element must still dispatch to the element's
+            // handlers. The re-entrancy protection may only cut in at a depth
+            // no sane handler chain reaches (see the jqnext-only cap test) -
+            // a binary "nested trigger is a no-op" guard silently swallowed
+            // legitimate single re-triggers like this one.
+            var host = $('<div></div>').appendTo('#qunit-fixture');
+            var seen = 0, retriggered = false;
+            host.on('retrigger-test', function() {
+                if (!retriggered) {
+                    retriggered = true;
+                    host.trigger('retrigger-test');
+                }
+            });
+            host.on('retrigger-test', function() { seen++; });
+            host.trigger('retrigger-test');
+            assert.equal(seen, 2, 'second handler observed the outer AND the nested dispatch');
+            host.remove();
+        });
+
+        if (window.jQNext && window.jQuery === window.jQNext) {
+            QUnit.test('unbounded same-event re-trigger terminates at the depth cap (jqnext only)', function(assert) {
+                // Real jQuery recurses until the call stack overflows here, so
+                // this safety net is jqnext's own behaviour - deliberately not
+                // asserted against the reference. The handler has NO self-cap:
+                // termination must come from the library.
+                var host = $('<div></div>').appendTo('#qunit-fixture');
+                var calls = 0, threw = false;
+                host.on('runaway-test', function() {
+                    calls++;
+                    host.trigger('runaway-test');
+                });
+                try {
+                    host.trigger('runaway-test');
+                } catch (e) {
+                    threw = true;
+                }
+                assert.notOk(threw, 'no stack overflow');
+                assert.ok(calls >= 2, 'legitimate nesting depth allowed (' + calls + ' calls)');
+                assert.ok(calls <= 32, 'terminated at the depth cap (' + calls + ' calls)');
+                host.remove();
+            });
+        }
+
         QUnit.test('.off() removes handler', function(assert) {
             var called = false;
             var handler = function() { called = true; };

@@ -19,11 +19,22 @@ const handlersStorage = new WeakMap();
 // incoming native event's type we skip our handler dispatch for it.
 let triggered;
 
-// Re-entrancy guard for triggerEvent(): tracks the event types currently being
-// triggered on each element. If a handler re-triggers the same event on the same
-// element (e.g. a focus handler that calls .focus()), the nested trigger is a
-// no-op instead of recursing until the stack overflows. jQuery achieves the same
-// effect via its leverageNative de-duplication.
+// Re-entrancy DEPTH cap for triggerEvent(): tracks how deeply each event type
+// is currently nested on each element (elem -> Map(type -> depth)).
+//
+// Real jQuery lets a handler re-trigger the same event on the same element and
+// dispatches it again - legitimate patterns rely on that (a change handler
+// normalising a value and re-firing change for the handlers after it). A
+// binary "nested trigger is a no-op" guard silently swallowed those. But real
+// jQuery also recurses without limit, so an unguarded re-triggering handler
+// (e.g. a focus handler that calls .focus() - Preside's "chosen" dropdown)
+// blows the stack.
+//
+// The cap keeps both properties: nesting up to MAX_TRIGGER_DEPTH behaves
+// exactly like jQuery; anything deeper is a runaway loop by construction (no
+// sane handler chain re-enters the same event on the same element 8 times)
+// and becomes a no-op instead of a RangeError.
+const MAX_TRIGGER_DEPTH = 8;
 const inProgress = new WeakMap();
 
 /**
@@ -708,17 +719,19 @@ function triggerEvent(elem, event, data, propagate, isRoot = true) {
   // data can be an array that should be spread as extra args
   eventObj._extraArgs = data != null ? (Array.isArray(data) ? data : [data]) : [];
 
-  // Re-entrancy guard: bail if a trigger of this type is already running on this
-  // element (a handler re-triggered the same event on the same element).
-  let typeSet = inProgress.get(elem);
-  if (typeSet?.has(type)) {
+  // Re-entrancy depth cap: same-type re-triggers on this element behave like
+  // jQuery up to MAX_TRIGGER_DEPTH, then bail (runaway loop - see the
+  // declaration comment).
+  let typeDepths = inProgress.get(elem);
+  const depth = typeDepths?.get(type) || 0;
+  if (depth >= MAX_TRIGGER_DEPTH) {
     return eventObj.result;
   }
-  if (!typeSet) {
-    typeSet = new Set();
-    inProgress.set(elem, typeSet);
+  if (!typeDepths) {
+    typeDepths = new Map();
+    inProgress.set(elem, typeDepths);
   }
-  typeSet.add(type);
+  typeDepths.set(type, depth + 1);
 
   try {
     // Trigger on element
@@ -760,7 +773,12 @@ function triggerEvent(elem, event, data, propagate, isRoot = true) {
       }
     }
   } finally {
-    typeSet.delete(type);
+    const remaining = ( typeDepths.get(type) || 0 ) - 1;
+    if (remaining > 0) {
+      typeDepths.set(type, remaining);
+    } else {
+      typeDepths.delete(type);
+    }
   }
 
   return eventObj.result;
