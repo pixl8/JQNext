@@ -381,6 +381,56 @@ if (typeof window.presideJQuery !== 'undefined') {
             $('.before-test').remove();
         });
         
+        QUnit.test('multi-node insertion preserves document order', function(assert) {
+            // Regression: after()/prepend() inserted multi-node content REVERSED
+            // (fixed-reference insertBefore loop instead of a fragment). Real
+            // jQuery preserves source order for every insertion method - callers
+            // like Preside's frontendEditors.js setContent() re-render whole
+            // content regions through $(comment).after(html) and were coming
+            // back with their blocks in reverse order.
+            var host = $('<div></div>').appendTo('#qunit-fixture');
+
+            host.append('<i>1</i><i>2</i><i>3</i>');
+            assert.equal(host.text(), '123', 'append() keeps order');
+            host.empty();
+
+            host.prepend('<i>1</i><i>2</i><i>3</i>');
+            assert.equal(host.text(), '123', 'prepend() keeps order');
+            host.empty();
+
+            var anchor = $('<span>|</span>').appendTo(host);
+            anchor.after('<i>1</i><i>2</i><i>3</i>');
+            assert.equal(host.text(), '|123', 'after() keeps order');
+            host.empty();
+
+            anchor = $('<span>|</span>').appendTo(host);
+            anchor.before('<i>1</i><i>2</i><i>3</i>');
+            assert.equal(host.text(), '123|', 'before() keeps order');
+            host.empty();
+
+            // the Preside setContent() shape: target is a COMMENT node
+            var commentHost = $('<div></div>').appendTo('#qunit-fixture')[0];
+            var comment = document.createComment('container: x');
+            commentHost.appendChild(comment);
+            $(comment).after('<p>one</p><p>two</p><p>three</p>');
+            assert.equal($(commentHost).text(), 'onetwothree', 'after() on a comment node keeps order');
+
+            // the *To variants route through the same internals
+            host.empty();
+            anchor = $('<span>|</span>').appendTo(host);
+            $('<i>1</i><i>2</i><i>3</i>').insertAfter(anchor);
+            assert.equal(host.text(), '|123', 'insertAfter() keeps order');
+
+            // multi-target sets clone per target and keep order for each
+            host.empty();
+            host.append('<b class="t">A</b><b class="t">B</b>');
+            host.find('.t').after('<i>1</i><i>2</i>');
+            assert.equal(host.text(), 'A12B12', 'after() on a multi-element set keeps order per target');
+
+            host.remove();
+            $(commentHost).remove();
+        });
+
         QUnit.test('.wrap()', function(assert) {
             $('#test-span').wrap('<div class="wrapper"></div>');
             assert.ok($('#test-span').parent().hasClass('wrapper'), 'wrap() wraps element');

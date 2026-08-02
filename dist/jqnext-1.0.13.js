@@ -3776,11 +3776,19 @@
         // Function results are always used directly (fresh per element)
         allNodes.push(...resultNodes);
       });
-      
-      // Insert all nodes
-      allNodes.forEach(node => {
-        callback.call(this, node);
-      });
+
+      // Insert all nodes as ONE fragment so document order is preserved.
+      // Inserting them one at a time reversed multi-node content for after()
+      // and prepend(): their insertion references (this.nextSibling /
+      // this.firstChild) move to the just-inserted node, so each subsequent
+      // node landed closest to the anchor. Real jQuery inserts a fragment.
+      if (allNodes.length === 1) {
+        callback.call(this, allNodes[0]);
+      } else if (allNodes.length) {
+        const frag = doc.createDocumentFragment();
+        allNodes.forEach(node => frag.appendChild(node));
+        callback.call(this, frag);
+      }
     });
     
     return collection;
