@@ -1079,7 +1079,15 @@ if (typeof window.presideJQuery !== 'undefined') {
 
             assert.notOk(threw, 'no RangeError / stack overflow');
             assert.ok(calls >= 1, 'focus handler fired');
-            assert.ok(calls < 100, 'handler did not recurse unbounded (' + calls + ' calls)');
+            // Real jQuery re-dispatches focus handlers on every .focus() call -
+            // even on an already-focused element - so against the reference this
+            // recurses to whatever cap the handler imposes (100 here). That is
+            // reference behaviour, not a failure. jqnext's recursion GUARD is
+            // the regression under test, so the stronger assertion only applies
+            // when jqnext is the library under test.
+            if (window.jQNext && jQuery === window.jQNext) {
+                assert.ok(calls < 100, 'handler did not recurse unbounded (' + calls + ' calls)');
+            }
             $('#focus-input-1').off('focus');
         });
 
